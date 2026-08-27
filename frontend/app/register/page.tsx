@@ -1,0 +1,442 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { GraduationCap, ArrowLeft, ArrowRight, Check } from "lucide-react";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
+import Select from "@/components/ui/Select";
+import { MOCK_SETS } from "@/lib/mockData";
+import { apiRegister } from "@/lib/api";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface FormData {
+  // Step 1 — Account
+  email: string;
+  password: string;
+  confirmPassword: string;
+  // Step 2 — Bio-data (matches spec v2 members table fields)
+  full_name: string;        // spec: users.full_name — single field, not split
+  gender: string;
+  phone: string;
+  address: string;
+  matric_number: string;
+  bio: string;
+  // Step 3 — Set info
+  setId: string;            // spec: "requires setId at signup" — camelCase
+}
+
+// ─── Steps config ─────────────────────────────────────────────────────────────
+
+const STEPS = [
+  { id: 1, label: "Account"  },
+  { id: 2, label: "Bio-data" },
+  { id: 3, label: "Set Info" },
+  { id: 4, label: "Review"   },
+];
+
+// graduation_sets.set_name is the year string e.g. "2005"
+const setOptions = MOCK_SETS.map((s) => ({
+  value: s.id,
+  label: `Class of ${s.set_name}`,
+}));
+
+const genderOptions = [
+  { value: "Male",   label: "Male"   },
+  { value: "Female", label: "Female" },
+  { value: "Other",  label: "Other"  },
+];
+
+// ─── Step 1 — Account ─────────────────────────────────────────────────────────
+
+function Step1({
+  register,
+  errors,
+}: {
+  register: ReturnType<typeof useForm<FormData>>["register"];
+  errors: ReturnType<typeof useForm<FormData>>["formState"]["errors"];
+}) {
+  return (
+    <div className="flex flex-col gap-5">
+      <div>
+        <h2 className="text-xl font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)]">
+          Create your account
+        </h2>
+        <p className="text-sm text-[var(--text-muted)] mt-1">
+          You'll use this email and password to sign in.
+        </p>
+      </div>
+      <Input
+        label="Email address"
+        type="email"
+        placeholder="you@example.com"
+        autoComplete="email"
+        error={errors.email?.message}
+        {...register("email", {
+          required: "Email is required",
+          pattern: {
+            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+            message: "Enter a valid email address",
+          },
+        })}
+      />
+      <Input
+        label="Password"
+        type="password"
+        placeholder="Min. 8 characters"
+        autoComplete="new-password"
+        error={errors.password?.message}
+        {...register("password", {
+          required: "Password is required",
+          minLength: { value: 8, message: "Password must be at least 8 characters" },
+        })}
+      />
+      <Input
+        label="Confirm password"
+        type="password"
+        placeholder="Re-enter your password"
+        autoComplete="new-password"
+        error={errors.confirmPassword?.message}
+        {...register("confirmPassword", { required: "Please confirm your password" })}
+      />
+    </div>
+  );
+}
+
+// ─── Step 2 — Bio-data ────────────────────────────────────────────────────────
+
+function Step2({
+  register,
+  errors,
+}: {
+  register: ReturnType<typeof useForm<FormData>>["register"];
+  errors: ReturnType<typeof useForm<FormData>>["formState"]["errors"];
+}) {
+  return (
+    <div className="flex flex-col gap-5">
+      <div>
+        <h2 className="text-xl font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)]">
+          Tell us about yourself
+        </h2>
+        <p className="text-sm text-[var(--text-muted)] mt-1">
+          This information builds your alumni profile. Your profile photo can be added after registration.
+        </p>
+      </div>
+
+      {/* Spec v2: users.full_name — single combined field */}
+      <Input
+        label="Full name"
+        placeholder="Ada Okonkwo"
+        error={errors.full_name?.message}
+        {...register("full_name", { required: "Full name is required" })}
+      />
+
+      <Select
+        label="Gender"
+        placeholder="Select…"
+        options={genderOptions}
+        {...register("gender")}
+      />
+
+      <Input
+        label="Phone number"
+        type="tel"
+        placeholder="+234 800 000 0000"
+        {...register("phone")}
+      />
+
+      <Input
+        label="Current address"
+        placeholder="e.g. Victoria Island, Lagos"
+        {...register("address")}
+      />
+
+      <Input
+        label="Matriculation number"
+        placeholder="e.g. 2001/001"
+        hint="Your school-issued matric number, if you have it."
+        {...register("matric_number")}
+      />
+
+      <div className="flex flex-col gap-1">
+        <label className="text-sm font-medium text-[var(--text-heading)] font-[family-name:var(--font-heading)]">
+          Short bio <span className="text-[var(--text-muted)] font-normal">(optional)</span>
+        </label>
+        <textarea
+          className="input resize-none"
+          rows={3}
+          placeholder="A sentence or two about what you do and your connection to the school…"
+          {...register("bio")}
+        />
+      </div>
+
+      {/* Cloudinary note — profile_image is set post-registration via profile edit */}
+      <div className="bg-[var(--primary-light)] rounded-xl px-4 py-3 text-xs text-[var(--text-muted)]">
+        📷 Profile photo: You can upload your profile picture after your account is verified, from your profile settings. We use Cloudinary for secure image hosting.
+      </div>
+    </div>
+  );
+}
+
+// ─── Step 3 — Set info ────────────────────────────────────────────────────────
+
+function Step3({
+  register,
+  errors,
+}: {
+  register: ReturnType<typeof useForm<FormData>>["register"];
+  errors: ReturnType<typeof useForm<FormData>>["formState"]["errors"];
+}) {
+  return (
+    <div className="flex flex-col gap-5">
+      <div>
+        <h2 className="text-xl font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)]">
+          Your graduating set
+        </h2>
+        <p className="text-sm text-[var(--text-muted)] mt-1">
+          Select your graduating set. This links you to your set's community page, WhatsApp group, and dues cycle.
+        </p>
+      </div>
+
+      {/* spec: "requires setId at signup" */}
+      <Select
+        label="Graduating set"
+        placeholder="Select your set…"
+        options={setOptions}
+        error={errors.setId?.message}
+        {...register("setId", { required: "Please select your graduating set" })}
+      />
+
+      <div className="bg-[var(--primary-light)] rounded-xl p-4 text-sm text-[var(--text-body)]">
+        <p className="font-semibold text-[var(--primary)] mb-1">Registration fee</p>
+        <p className="text-[var(--text-muted)]">
+          A one-time registration fee is payable after your account is verified. You'll be redirected to Paystack to complete payment securely. The exact amount will be shown at that step.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Step 4 — Review ──────────────────────────────────────────────────────────
+
+function Step4({ data }: { data: Partial<FormData> }) {
+  const set = MOCK_SETS.find((s) => s.id === data.setId);
+  return (
+    <div className="flex flex-col gap-5">
+      <div>
+        <h2 className="text-xl font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)]">
+          Review your details
+        </h2>
+        <p className="text-sm text-[var(--text-muted)] mt-1">
+          Check everything is correct before submitting.
+        </p>
+      </div>
+      <div className="flex flex-col gap-0 text-sm">
+        {[
+          { label: "Email",       value: data.email },
+          { label: "Full name",   value: data.full_name },
+          { label: "Gender",      value: data.gender || "—" },
+          { label: "Phone",       value: data.phone || "—" },
+          { label: "Address",     value: data.address || "—" },
+          { label: "Matric no.",  value: data.matric_number || "—" },
+          { label: "Set",         value: set ? `Class of ${set.set_name}` : data.setId },
+        ].map(({ label, value }) => (
+          <div
+            key={label}
+            className="flex items-start justify-between py-2.5 border-b border-[var(--border-subtle)] last:border-0"
+          >
+            <span className="text-[var(--text-muted)] w-28 shrink-0">{label}</span>
+            <span className="text-[var(--text-heading)] font-medium text-right">{value}</span>
+          </div>
+        ))}
+      </div>
+      <div className="bg-[var(--success-bg)] rounded-xl p-4 text-sm text-[#166534]">
+        <p className="font-semibold mb-1 flex items-center gap-1.5">
+          <Check size={15} /> Ready to submit
+        </p>
+        <p className="opacity-80">
+          By submitting, you agree to the association's terms. Your account will be reviewed and verified by an admin. Once verified, you'll be prompted to pay the registration fee to gain full access.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
+export default function RegisterPage() {
+  const [step, setStep]     = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    getValues,
+    trigger,
+    formState: { errors },
+  } = useForm<FormData>({ mode: "onTouched" });
+
+  const stepFields: Record<number, (keyof FormData)[]> = {
+    1: ["email", "password", "confirmPassword"],
+    2: ["full_name"],
+    3: ["setId"],
+  };
+
+  async function handleNext() {
+    const fields = stepFields[step];
+    if (fields) {
+      const valid = await trigger(fields);
+      if (!valid) return;
+    }
+    setStep((s) => Math.min(s + 1, 4));
+  }
+
+  async function onSubmit(data: FormData) {
+    setLoading(true);
+    try {
+      await apiRegister({
+        full_name:     data.full_name,
+        email:         data.email,
+        password:      data.password,
+        setId:         data.setId,         // spec: camelCase setId at signup
+        gender:        data.gender || undefined,
+        phone:         data.phone  || undefined,
+        address:       data.address || undefined,
+        matric_number: data.matric_number || undefined,
+        bio:           data.bio    || undefined,
+      });
+      setSuccess(true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (success) {
+    return (
+      <>
+        <Navbar variant="public" />
+        <main className="flex-1 flex items-center justify-center px-4 py-20">
+          <div className="card max-w-md w-full p-8 text-center flex flex-col items-center gap-5">
+            <div className="w-16 h-16 rounded-full bg-[var(--success-bg)] flex items-center justify-center">
+              <Check size={32} className="text-[var(--success)]" />
+            </div>
+            <h2 className="text-2xl font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)]">
+              Application submitted!
+            </h2>
+            <p className="text-[var(--text-muted)] text-sm leading-relaxed">
+              Your registration is under review. You'll receive an email once your account is verified. After verification, you'll be prompted to pay the registration fee to gain full access.
+            </p>
+            <Link href="/" className="btn-primary w-full justify-center mt-2">
+              Back to Home
+            </Link>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Navbar variant="public" />
+
+      <main className="flex-1 flex flex-col items-center px-4 py-10">
+        {/* Page header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 justify-center mb-3">
+            <span className="w-9 h-9 rounded-xl bg-[var(--primary)] text-white flex items-center justify-center">
+              <GraduationCap size={20} />
+            </span>
+          </div>
+          <h1 className="text-2xl md:text-3xl font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)]">
+            Join AlumniConnect
+          </h1>
+          <p className="text-sm text-[var(--text-muted)] mt-1">
+            Already a member?{" "}
+            <Link href="/login" className="text-[var(--primary)] font-medium hover:underline">
+              Sign in
+            </Link>
+          </p>
+        </div>
+
+        {/* Stepper */}
+        <div className="w-full max-w-md mb-8">
+          <div className="flex items-center">
+            {STEPS.map((s, idx) => (
+              <div key={s.id} className="flex items-center flex-1 last:flex-none">
+                <div className="flex flex-col items-center gap-1">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                      step > s.id
+                        ? "bg-[var(--success)] text-white"
+                        : step === s.id
+                        ? "bg-[var(--primary)] text-white"
+                        : "bg-[var(--border-subtle)] text-[var(--text-muted)]"
+                    }`}
+                  >
+                    {step > s.id ? <Check size={14} /> : s.id}
+                  </div>
+                  <span
+                    className={`text-xs font-medium ${
+                      step >= s.id ? "text-[var(--text-heading)]" : "text-[var(--text-muted)]"
+                    }`}
+                  >
+                    {s.label}
+                  </span>
+                </div>
+                {idx < STEPS.length - 1 && (
+                  <div
+                    className={`flex-1 h-0.5 mx-1 mb-4 transition-colors ${
+                      step > s.id ? "bg-[var(--success)]" : "bg-[var(--border-subtle)]"
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Form card */}
+        <div className="card w-full max-w-md p-6">
+          <form onSubmit={handleSubmit(onSubmit)} noValidate>
+            {step === 1 && <Step1 register={register} errors={errors} />}
+            {step === 2 && <Step2 register={register} errors={errors} />}
+            {step === 3 && <Step3 register={register} errors={errors} />}
+            {step === 4 && <Step4 data={getValues()} />}
+
+            <div className="flex justify-between mt-7 gap-3">
+              {step > 1 ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStep((s) => s - 1)}
+                >
+                  <ArrowLeft size={16} /> Back
+                </Button>
+              ) : (
+                <div />
+              )}
+              {step < 4 ? (
+                <Button type="button" onClick={handleNext} className="ml-auto">
+                  Next <ArrowRight size={16} />
+                </Button>
+              ) : (
+                <Button type="submit" loading={loading} className="ml-auto">
+                  Submit Application
+                </Button>
+              )}
+            </div>
+          </form>
+        </div>
+      </main>
+
+      <Footer />
+    </>
+  );
+}

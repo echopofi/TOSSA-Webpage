@@ -1,0 +1,163 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap");
+@import "tailwindcss";
+
+/* ── Design Tokens ─────────────────────────────────────────── */
+:root {
+  --bg-base:        #EDE9F7;
+  --surface-card:   #FFFFFF;
+  --primary:        #7C6FD1;
+  --primary-hover:  #6558BE;
+  --primary-light:  #F0EDFC;
+  --text-heading:   #2B2450;
+  --text-body:      #3D3A4A;
+  --text-muted:     #8E89A8;
+  --success:        #22C55E;
+  --success-bg:     #DCFCE7;
+  --warning:        #F59E0B;
+  --warning-bg:     #FEF3C7;
+  --danger:         #EF4444;
+  --danger-bg:      #FEE2E2;
+  --border-subtle:  #DDD8F0;
+  --shadow-card:    0 1px 4px 0 rgba(44, 36, 80, 0.08), 0 4px 16px 0 rgba(44, 36, 80, 0.05);
+  --radius-card:    12px;
+}
+
+/* ── Base ───────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { font-size: 16px; scroll-behavior: smooth; }
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-body);
+  font-family: "Inter", system-ui, sans-serif;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Poppins", system-ui, sans-serif;
+  font-weight: 600;
+  color: var(--text-heading);
+  line-height: 1.25;
+}
+
+/* ── Tailwind theme extensions ──────────────────────────────── */
+@theme inline {
+  --color-bg-base:       var(--bg-base);
+  --color-surface:       var(--surface-card);
+  --color-primary:       var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-light: var(--primary-light);
+  --color-heading:       var(--text-heading);
+  --color-body:          var(--text-body);
+  --color-muted:         var(--text-muted);
+  --color-success:       var(--success);
+  --color-success-bg:    var(--success-bg);
+  --color-warning:       var(--warning);
+  --color-warning-bg:    var(--warning-bg);
+  --color-danger:        var(--danger);
+  --color-danger-bg:     var(--danger-bg);
+  --color-border:        var(--border-subtle);
+  --font-heading:        "Poppins", system-ui, sans-serif;
+  --font-body:           "Inter", system-ui, sans-serif;
+  --radius-card:         12px;
+}
+
+/* ── Utilities ─────────────────────────────────────────────── */
+.card {
+  background: var(--surface-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border-subtle);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.375rem;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 8px;
+  font-family: "Poppins", sans-serif;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  line-height: 1;
+  transition: background 0.15s ease, transform 0.1s ease;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+}
+.btn-primary:hover   { background: var(--primary-hover); transform: translateY(-1px); }
+.btn-primary:active  { transform: translateY(0); }
+.btn-primary:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.375rem;
+  background: transparent;
+  color: var(--primary);
+  border: 1.5px solid var(--primary);
+  border-radius: 8px;
+  font-family: "Poppins", sans-serif;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  line-height: 1;
+  transition: background 0.15s ease, color 0.15s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+.btn-outline:hover { background: var(--primary-light); }
+
+/* Status pills */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: "Poppins", sans-serif;
+  letter-spacing: 0.01em;
+}
+.pill-success  { background: var(--success-bg); color: #166534; }
+.pill-warning  { background: var(--warning-bg); color: #92400E; }
+.pill-danger   { background: var(--danger-bg);  color: #991B1B; }
+.pill-neutral  { background: var(--primary-light); color: var(--primary); }
+
+/* Form inputs */
+.input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1.5px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--text-body);
+  font-family: "Inter", sans-serif;
+  font-size: 0.9375rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  outline: none;
+}
+.input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(124, 111, 209, 0.15);
+}
+.input.error {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+/* Section divider */
+.section-divider {
+  width: 3rem;
+  height: 4px;
+  background: var(--primary);
+  border-radius: 2px;
+  margin: 0.5rem 0 1.25rem;
+}

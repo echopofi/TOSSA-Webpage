@@ -1,0 +1,83 @@
+"use client";
+
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  Users,
+  CreditCard,
+  User,
+  Megaphone,
+  LogOut,
+} from "lucide-react";
+import clsx from "clsx";
+
+const navItems = [
+  { href: "/dashboard",    icon: LayoutDashboard, label: "Dashboard"   },
+  { href: "/sets",         icon: Users,           label: "My Set"      },
+  { href: "/payments",     icon: CreditCard,      label: "Dues & Payments" },
+  { href: "/profile",      icon: User,            label: "My Profile"  },
+  { href: "/admin",        icon: Megaphone,       label: "Admin Panel", admin: true },
+];
+
+interface SidebarProps {
+  isAdmin?: boolean;
+}
+
+export default function Sidebar({ isAdmin }: SidebarProps) {
+  const pathname = usePathname();
+
+  return (
+    <aside className="w-60 shrink-0 hidden md:flex flex-col bg-[var(--surface-card)] border-r border-[var(--border-subtle)] min-h-screen">
+      {/* Brand */}
+      <div className="px-5 py-5 border-b border-[var(--border-subtle)]">
+        <Link
+          href="/"
+          className="flex items-center gap-2 font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)]"
+        >
+          <Image
+            src="/assets/logo.jpeg"
+            alt="AlumniConnect logo"
+            width={32}
+            height={32}
+            className="rounded-lg object-cover"
+          />
+          AlumniConnect
+        </Link>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 px-3 py-4 flex flex-col gap-1">
+        {navItems
+          .filter((item) => !item.admin || isAdmin)
+          .map(({ href, icon: Icon, label }) => {
+            const active = pathname === href || pathname.startsWith(href + "/");
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={clsx(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                  active
+                    ? "bg-[var(--primary-light)] text-[var(--primary)] font-semibold"
+                    : "text-[var(--text-body)] hover:bg-[var(--bg-base)] hover:text-[var(--primary)]"
+                )}
+              >
+                <Icon size={18} />
+                {label}
+              </Link>
+            );
+          })}
+      </nav>
+
+      {/* Logout */}
+      <div className="px-3 py-4 border-t border-[var(--border-subtle)]">
+        <button className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger-bg)] w-full transition-colors">
+          <LogOut size={18} />
+          Sign Out
+        </button>
+      </div>
+    </aside>
+  );
+}
