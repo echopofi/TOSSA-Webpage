@@ -1,0 +1,204 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  fullName     String   @map("full_name") @db.VarChar(255)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  role         String   @default("member") @db.VarChar(20)
+  isVerified   Boolean  @default(false) @map("is_verified")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @map("updated_at")
+
+  member         Member?
+  refreshTokens  RefreshToken[]
+  announcements  Announcement[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  tokenHash String   @unique @map("token_hash") @db.VarChar(255)
+  expiresAt DateTime @map("expires_at")
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Member {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @unique @map("user_id") @db.Uuid
+  matricNumber  String?  @unique @map("matric_number") @db.VarChar(50)
+  gender        String?  @db.VarChar(20)
+  phone         String?  @db.VarChar(30)
+  address       String?  @db.Text()
+  bio           String?  @db.Text()
+  profileImage  String?  @map("profile_image") @db.VarChar(500)
+  isActive      Boolean  @default(true) @map("is_active")
+  joinedAt      DateTime @default(now()) @map("joined_at")
+
+  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  setMembers           SetMember[]
+  payments             Payment[]
+  duesPayments         DuesPayment[]
+  milestones           MemberMilestone[]
+  targetAnnouncements  Announcement[]       @relation("TargetMember")
+
+  @@map("members")
+}
+
+model GraduationSet {
+  id              String   @id @default(uuid()) @db.Uuid
+  setName         String   @map("set_name") @db.VarChar(100)
+  startYear       Int      @map("start_year") @db.SmallInt
+  endYear         Int      @map("end_year") @db.SmallInt
+  description     String?  @db.Text()
+  groupInviteLink String?  @map("group_invite_link") @db.VarChar(500)
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @map("updated_at")
+
+  setMembers      SetMember[]
+  announcements   Announcement[]
+
+  @@unique([setName])
+  @@unique([startYear, endYear])
+  @@map("graduation_sets")
+}
+
+model SetMember {
+  id         String   @id @default(uuid()) @db.Uuid
+  memberId   String   @map("member_id") @db.Uuid
+  setId      String   @map("set_id") @db.Uuid
+  roleInSet  String?  @map("role_in_set") @db.VarChar(100)
+  bioInSet   String?  @map("bio_in_set") @db.Text()
+  joinedAt   DateTime @default(now()) @map("joined_at")
+
+  member Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  set    GraduationSet @relation(fields: [setId], references: [id], onDelete: Restrict)
+
+  @@unique([memberId, setId])
+  @@map("set_members")
+}
+
+model Announcement {
+  id              String    @id @default(uuid()) @db.Uuid
+  createdBy       String    @map("created_by") @db.Uuid
+  title           String    @db.VarChar(255)
+  content         String    @db.Text()
+  targetType      String    @default("all_members") @map("target_type") @db.VarChar(30)
+  setId           String?   @map("set_id") @db.Uuid
+  targetMemberId  String?   @map("target_member_id") @db.Uuid
+  isPublished     Boolean   @default(true) @map("is_published")
+  scheduledAt     DateTime? @map("scheduled_at")
+  publishedAt     DateTime? @map("published_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  author       User    @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  set          GraduationSet? @relation(fields: [setId], references: [id], onDelete: SetNull)
+  targetMember Member? @relation("TargetMember", fields: [targetMemberId], references: [id], onDelete: SetNull)
+
+  @@index([setId], map: "idx_announcements_set_id")
+  @@index([targetMemberId], map: "idx_announcements_target_member_id")
+  @@index([scheduledAt], map: "idx_announcements_scheduled_at")
+  @@map("announcements")
+}
+
+model MemberMilestone {
+  id            String   @id @default(uuid()) @db.Uuid
+  memberId      String   @map("member_id") @db.Uuid
+  title         String   @db.VarChar(255)
+  description   String?  @db.Text()
+  milestoneDate DateTime @map("milestone_date")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @map("updated_at")
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId], map: "idx_member_milestones_member_id")
+  @@map("member_milestones")
+}
+
+model Payment {
+  id                String   @id @default(uuid()) @db.Uuid
+  memberId          String   @map("member_id") @db.Uuid
+  paymentType       String   @map("payment_type") @db.VarChar(30)
+  amount            Int
+  paystackReference String?  @unique @map("paystack_reference") @db.VarChar(255)
+  status            String   @default("pending") @db.VarChar(20)
+  paidAt            DateTime? @map("paid_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  member Member               @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  ledger PaymentTransaction[]
+
+  @@index([memberId], map: "idx_payments_member_id")
+  @@map("payments")
+}
+
+model DuesCycle {
+  id        String   @id @default(uuid()) @db.Uuid
+  title     String   @db.VarChar(150)
+  cycleType String   @map("cycle_type") @db.VarChar(20)
+  startDate DateTime @map("start_date") @db.Date()
+  endDate   DateTime @map("end_date") @db.Date()
+  amount    Int
+  dueDate   DateTime @map("due_date") @db.Date()
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  duesPayments DuesPayment[]
+
+  @@map("dues_cycles")
+}
+
+model DuesPayment {
+  id                String   @id @default(uuid()) @db.Uuid
+  memberId          String   @map("member_id") @db.Uuid
+  duesCycleId       String   @map("dues_cycle_id") @db.Uuid
+  amount            Int
+  amountPaid        Int      @default(0) @map("amount_paid")
+  paystackReference String?  @unique @map("paystack_reference") @db.VarChar(255)
+  status            String   @default("pending") @db.VarChar(20)
+  paidAt            DateTime? @map("paid_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  member Member        @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  cycle  DuesCycle     @relation(fields: [duesCycleId], references: [id], onDelete: Restrict)
+  ledger PaymentTransaction[]
+
+  @@index([memberId], map: "idx_dues_payments_member_id")
+  @@index([duesCycleId], map: "idx_dues_payments_cycle_id")
+  @@map("dues_payments")
+}
+
+model PaymentTransaction {
+  id            String   @id @default(uuid()) @db.Uuid
+  paymentId     String?  @map("payment_id") @db.Uuid
+  duesPaymentId String?  @map("dues_payment_id") @db.Uuid
+  amount        Int
+  status        String   @db.VarChar(20)
+  channel       String   @default("paystack") @db.VarChar(30)
+  reference     String   @unique @db.VarChar(255)
+  metadata      Json?    @default("{}")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  payment     Payment?     @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  duesPayment DuesPayment? @relation(fields: [duesPaymentId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId], map: "idx_payment_transactions_payment_id")
+  @@index([duesPaymentId], map: "idx_payment_transactions_dues_payment_id")
+  @@map("payment_transactions")
+}
