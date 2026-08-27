@@ -46,7 +46,8 @@ export interface RegisterPayload {
   gender?: string;
   phone?: string;
   address?: string;
-  matric_number?: string;
+  birth_day?: string;
+  birth_month?: string;
   bio?: string;
 }
 

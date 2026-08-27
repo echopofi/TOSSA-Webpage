@@ -24,7 +24,8 @@ interface FormData {
   gender: string;
   phone: string;
   address: string;
-  matric_number: string;
+  birth_day: string;
+  birth_month: string;
   bio: string;
   // Step 3 — Set info
   setId: string;            // spec: "requires setId at signup" — camelCase
@@ -48,7 +49,26 @@ const setOptions = MOCK_SETS.map((s) => ({
 const genderOptions = [
   { value: "Male",   label: "Male"   },
   { value: "Female", label: "Female" },
-  { value: "Other",  label: "Other"  },
+];
+
+const dayOptions = Array.from({ length: 31 }, (_, i) => ({
+  value: String(i + 1),
+  label: String(i + 1).padStart(2, "0"),
+}));
+
+const monthOptions = [
+  { value: "January",   label: "January"   },
+  { value: "February",  label: "February"  },
+  { value: "March",     label: "March"     },
+  { value: "April",     label: "April"     },
+  { value: "May",       label: "May"       },
+  { value: "June",      label: "June"      },
+  { value: "July",      label: "July"      },
+  { value: "August",    label: "August"    },
+  { value: "September", label: "September" },
+  { value: "October",   label: "October"   },
+  { value: "November",  label: "November"  },
+  { value: "December",  label: "December"  },
 ];
 
 // ─── Step 1 — Account ─────────────────────────────────────────────────────────
@@ -155,12 +175,20 @@ function Step2({
         {...register("address")}
       />
 
-      <Input
-        label="Matriculation number"
-        placeholder="e.g. 2001/001"
-        hint="Your school-issued matric number, if you have it."
-        {...register("matric_number")}
-      />
+      <div className="grid grid-cols-2 gap-3">
+        <Select
+          label="Birth day"
+          placeholder="Day"
+          options={dayOptions}
+          {...register("birth_day")}
+        />
+        <Select
+          label="Birth month"
+          placeholder="Month"
+          options={monthOptions}
+          {...register("birth_month")}
+        />
+      </div>
 
       <div className="flex flex-col gap-1">
         <label className="text-sm font-medium text-[var(--text-heading)] font-[family-name:var(--font-heading)]">
@@ -242,7 +270,13 @@ function Step4({ data }: { data: Partial<FormData> }) {
           { label: "Gender",      value: data.gender || "—" },
           { label: "Phone",       value: data.phone || "—" },
           { label: "Address",     value: data.address || "—" },
-          { label: "Matric no.",  value: data.matric_number || "—" },
+          {
+            label: "Birthday",
+            value:
+              data.birth_day && data.birth_month
+                ? `${data.birth_day} ${data.birth_month}`
+                : "—",
+          },
           { label: "Set",         value: set ? `Class of ${set.set_name}` : data.setId },
         ].map(({ label, value }) => (
           <div
@@ -308,7 +342,8 @@ export default function RegisterPage() {
         gender:        data.gender || undefined,
         phone:         data.phone  || undefined,
         address:       data.address || undefined,
-        matric_number: data.matric_number || undefined,
+        birth_day:     data.birth_day || undefined,
+        birth_month:   data.birth_month || undefined,
         bio:           data.bio    || undefined,
       });
       setSuccess(true);
