@@ -25,11 +25,11 @@ export default function Navbar({ variant = "public", userName }: NavbarProps) {
           <Image
             src="/assets/logo.jpeg"
             alt="AlumniConnect logo"
-            width={32}
-            height={32}
+            width={52}
+            height={42}
             className="rounded-lg object-cover"
           />
-          TOSA
+          TSSOSA
         </Link>
 
         {/* Desktop links */}
