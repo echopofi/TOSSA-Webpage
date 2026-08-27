@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { clearCurrentUser } from "@/lib/session";
 import {
   LayoutDashboard,
   Users,
@@ -27,6 +28,12 @@ interface SidebarProps {
 
 export default function Sidebar({ isAdmin }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  function handleSignOut() {
+    clearCurrentUser();
+    router.push("/login");
+  }
 
   return (
     <aside className="w-60 shrink-0 hidden md:flex flex-col bg-[var(--surface-card)] border-r border-[var(--border-subtle)] min-h-screen">
@@ -73,7 +80,10 @@ export default function Sidebar({ isAdmin }: SidebarProps) {
 
       {/* Logout */}
       <div className="px-3 py-4 border-t border-[var(--border-subtle)]">
-        <button className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger-bg)] w-full transition-colors">
+        <button
+          onClick={handleSignOut}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger-bg)] w-full transition-colors"
+        >
           <LogOut size={18} />
           Sign Out
         </button>

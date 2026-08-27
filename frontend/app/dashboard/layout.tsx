@@ -10,7 +10,7 @@ export default function DashboardLayout({
     <div className="min-h-screen flex flex-col">
       {/* Mobile top bar */}
       <div className="md:hidden">
-        <Navbar variant="auth" userName="Ada O." />
+        <Navbar variant="auth" />
       </div>
 
       <div className="flex flex-1">

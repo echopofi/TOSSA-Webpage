@@ -11,6 +11,7 @@ import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import { MOCK_SETS } from "@/lib/mockData";
 import { apiRegister } from "@/lib/api";
+import { saveCurrentUser } from "@/lib/session";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -345,6 +346,13 @@ export default function RegisterPage() {
         birth_day:     data.birth_day || undefined,
         birth_month:   data.birth_month || undefined,
         bio:           data.bio    || undefined,
+      });
+      const set = MOCK_SETS.find((s) => s.id === data.setId);
+      saveCurrentUser({
+        full_name: data.full_name,
+        email:     data.email,
+        setId:     data.setId,
+        set_name:  set?.set_name,
       });
       setSuccess(true);
     } finally {

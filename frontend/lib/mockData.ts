@@ -271,64 +271,29 @@ export const MOCK_DUES_CYCLES: DuesCycle[] = [
 
 // ─── Dues Payments ────────────────────────────────────────────────────────────
 
-export const MOCK_DUES_PAYMENTS: DuesPayment[] = [
-  {
-    id: "dp_001",
-    member_id: "mem_001",
-    dues_cycle_id: "cycle_2023",
-    cycle_title: "2023/2024 Annual Dues",
-    amount: 25000,
-    amount_paid: 25000,
-    paystack_reference: "PS_DUES_2023_001",
-    status: "paid",
-    paid_at: "2023-11-15T10:30:00Z",
-    created_at: "2023-11-15T10:28:00Z",
-  },
-  {
-    id: "dp_002",
-    member_id: "mem_001",
-    dues_cycle_id: "cycle_2025",
-    cycle_title: "2025/2026 Annual Dues",
-    amount: 30000,
-    amount_paid: 0,
-    paystack_reference: "",
-    status: "arrears",
-    created_at: "2025-01-01T08:00:00Z",
-  },
-];
+// A newly registered member has no dues payment records yet.
+export const MOCK_DUES_PAYMENTS: DuesPayment[] = [];
 
 export const MOCK_DUES_SUMMARY: DuesSummary = {
   total_owed: 55000,
-  total_paid: 25000,
-  outstanding: 30000,
+  total_paid: 0,
+  outstanding: 55000,
   cycles: [
     {
       cycle: MOCK_DUES_CYCLES[0],
-      dues_payment: MOCK_DUES_PAYMENTS[0],
-      status: "paid",
+      status: "unpaid",
     },
     {
       cycle: MOCK_DUES_CYCLES[1],
-      dues_payment: MOCK_DUES_PAYMENTS[1],
-      status: "arrears",
+      status: "unpaid",
     },
   ] satisfies DuesCycleStatus[],
 };
 
 // ─── Registration Payment ─────────────────────────────────────────────────────
 
-export const MOCK_PAYMENTS: Payment[] = [
-  {
-    id: "pay_001",
-    member_id: "mem_001",
-    payment_type: "registration_fee",
-    amount: 10000, // placeholder — spec says awaiting confirmation
-    paystack_reference: "PS_REG_20240110_001",
-    status: "success",
-    paid_at: "2024-01-10T09:15:00Z",
-    created_at: "2024-01-10T09:12:00Z",
-  },
-];
+// No registration fee has been paid yet for a newly registered member.
+export const MOCK_PAYMENTS: Payment[] = [];
 
 // ─── Announcements ────────────────────────────────────────────────────────────
 

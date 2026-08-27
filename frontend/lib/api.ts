@@ -60,6 +60,8 @@ import {
   MOCK_MILESTONES,
 } from "@/lib/mockData";
 
+import { getCurrentUser } from "@/lib/session";
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const delay = (ms = 400) => new Promise<void>((res) => setTimeout(res, ms));
@@ -87,9 +89,37 @@ export async function apiRegister(
   return ok({ user: MOCK_AUTH_USER, access_token: "mock_access_token" });
 }
 
-/** GET /api/auth/me — returns user + member + set */
+/**
+ * GET /api/auth/me — returns user + member + set
+ * Uses the identity captured at signup (see lib/session.ts) until the real
+ * backend is live, so the dashboard reflects the actual logged-in member.
+ */
 export async function apiMe(): Promise<ApiSuccess<AuthMeResponse>> {
   await delay(200);
+  const session = getCurrentUser();
+  if (session) {
+    const user: AuthUser = {
+      id: `usr_${Date.now()}`,
+      full_name: session.full_name,
+      email: session.email,
+      role: "member",
+      is_verified: true,
+    };
+    const member: Member = {
+      id: `mem_${Date.now()}`,
+      user_id: user.id,
+      full_name: session.full_name,
+      email: session.email,
+      is_active: true,
+      joined_at: new Date().toISOString(),
+      set_id: session.setId,
+      set_name: session.set_name,
+    };
+    const set = session.setId
+      ? MOCK_SETS.find((s) => s.id === session.setId) ?? null
+      : null;
+    return ok({ user, member, set });
+  }
   return ok(MOCK_AUTH_ME_RESPONSE);
 }
 

@@ -2,17 +2,28 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Menu, X } from "lucide-react";
 import Button from "@/components/ui/Button";
+import { getCurrentUser } from "@/lib/session";
 
 interface NavbarProps {
   variant?: "public" | "auth";
   userName?: string;
 }
 
+const subscribeNoop = () => () => {};
+
 export default function Navbar({ variant = "public", userName }: NavbarProps) {
   const [open, setOpen] = useState(false);
+
+  const authName = useSyncExternalStore(
+    subscribeNoop,
+    () => userName ?? getCurrentUser()?.full_name?.split(" ")[0] ?? "",
+    () => userName ?? ""
+  );
+
+  const displayName = variant === "auth" ? authName || undefined : undefined;
 
   return (
     <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-[var(--border-subtle)]">
@@ -55,7 +66,7 @@ export default function Navbar({ variant = "public", userName }: NavbarProps) {
                 Dashboard
               </Link>
               <span className="text-[var(--text-muted)] border-l border-[var(--border-subtle)] pl-4">
-                {userName}
+                {displayName}
               </span>
             </>
           )}
