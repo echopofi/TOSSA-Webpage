@@ -9,6 +9,7 @@ const prisma = new PrismaClient();
 
 const authRoutes = require('./routes/auth');
 const memberRoutes = require('./routes/members');
+const setsRoutes = require('./routes/sets');
 const announcementRoutes = require('./routes/announcements');
 const paymentRoutes = require('./routes/payments');
 const duesRoutes = require('./routes/dues');
@@ -35,6 +36,7 @@ app.use(cookieParser());
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/members', memberRoutes);
+app.use('/api/sets', setsRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/dues', duesRoutes);

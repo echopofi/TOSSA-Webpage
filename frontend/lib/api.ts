@@ -164,15 +164,29 @@ export async function apiUpdateMember(
 
 /** GET /api/sets — public, includes member_count */
 export async function apiGetSets(): Promise<ApiSuccess<GraduationSet[]>> {
-  await delay();
-  return ok(MOCK_SETS);
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sets`);
+  const json = await res.json();
+  // Backend returns { sets: [...] } — normalise to { success, data }
+  const sets: GraduationSet[] = (json.sets ?? []).map((s: any) => ({
+    id:               s.id,
+    set_name:         s.setName,
+    start_year:       s.startYear,
+    end_year:         s.endYear,
+    description:      s.description,
+    group_invite_link: s.groupInviteLink,
+    is_active:        true,
+    member_count:     s.memberCount,
+    created_at:       s.createdAt,
+    updated_at:       s.createdAt,
+  }));
+  return { success: true, data: sets };
 }
 
 /** GET individual set (no dedicated endpoint in spec — use sets list + filter client-side) */
 export async function apiGetSet(id: string): Promise<ApiSuccess<GraduationSet>> {
-  await delay();
-  const set = MOCK_SETS.find((s) => s.id === id) ?? MOCK_SETS[0];
-  return ok(set);
+  const { data: sets } = await apiGetSets();
+  const set = sets.find((s) => s.id === id) ?? sets[0];
+  return { success: true, data: set };
 }
 
 // ─── Member Milestones ────────────────────────────────────────────────────────
