@@ -1,12 +1,10 @@
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import { MOCK_SETS, MOCK_ADMIN_DASHBOARD } from "@/lib/mockData";
-import { formatNaira } from "@/lib/utils";
+import { MOCK_SETS } from "@/lib/mockData";
 import { GraduationCap, Users, CreditCard, MessageSquare, ArrowRight, CheckCircle } from "lucide-react";
 
 export default function HomePage() {
-  const stats = MOCK_ADMIN_DASHBOARD;
 
   return (
     <>
@@ -27,9 +25,9 @@ export default function HomePage() {
             <div className="max-w-2xl">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-white/80 text-xs font-semibold mb-6">
                 <GraduationCap size={13} />
-                Your School's Alumni Network
+                TCNN Alumni Network
               </span>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-[family-name:var(--font-heading)] font-semibold leading-[1.1] mb-6">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-[family-name:var(--font-heading)] font-semibold leading-[1.1] mb-6" style={{ color: '#141727' }}>
                 Every Set.
                 <br />
                 Every Story.
@@ -55,25 +53,6 @@ export default function HomePage() {
                 </Link>
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* ── Stats bar ─────────────────────────────────────────────────────── */}
-        <section className="bg-[var(--primary)] text-white">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            {[
-              { value: stats.total_members.toLocaleString(), label: "Alumni Members" },
-              { value: stats.active_members.toLocaleString(), label: "Active Members" },
-              { value: stats.total_sets.toLocaleString(), label: "Graduating Sets" },
-              { value: formatNaira(stats.total_dues_collected), label: "Dues Collected" },
-            ].map(({ value, label }) => (
-              <div key={label}>
-                <p className="text-2xl md:text-3xl font-[family-name:var(--font-heading)] font-semibold">
-                  {value}
-                </p>
-                <p className="text-white/70 text-sm mt-0.5">{label}</p>
-              </div>
-            ))}
           </div>
         </section>
 

@@ -8,7 +8,7 @@
   --primary:        #7C6FD1;
   --primary-hover:  #6558BE;
   --primary-light:  #F0EDFC;
-  --text-heading:   #2B2450;
+  --text-heading:   #4f4d68;
   --text-body:      #3D3A4A;
   --text-muted:     #8E89A8;
   --success:        #22C55E;
@@ -20,6 +20,7 @@
   --border-subtle:  #DDD8F0;
   --shadow-card:    0 1px 4px 0 rgba(44, 36, 80, 0.08), 0 4px 16px 0 rgba(44, 36, 80, 0.05);
   --radius-card:    12px;
+  --custom-red: #5b1919;
 }
 
 /* ── Base ───────────────────────────────────────────────────── */
