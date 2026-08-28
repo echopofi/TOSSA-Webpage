@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -11,8 +11,8 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import { MOCK_SETS } from "@/lib/mockData";
-import { apiRegister } from "@/lib/api";
-import { saveCurrentUser } from "@/lib/session";
+import { apiRegister, ApiRequestError, apiGetSets } from "@/lib/api";
+import type { GraduationSet } from "@/lib/types";
 import { uploadMemberPhoto } from "@/lib/upload";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -43,12 +43,6 @@ const STEPS = [
   { id: 3, label: "Set Info" },
   { id: 4, label: "Review"   },
 ];
-
-// graduation_sets.set_name is the year string e.g. "2005"
-const setOptions = MOCK_SETS.map((s) => ({
-  value: s.id,
-  label: `Class of ${s.set_name}`,
-}));
 
 const genderOptions = [
   { value: "Male",   label: "Male"   },
@@ -297,9 +291,11 @@ function Step2({
 function Step3({
   register,
   errors,
+  setOptions,
 }: {
   register: ReturnType<typeof useForm<FormData>>["register"];
   errors: ReturnType<typeof useForm<FormData>>["formState"]["errors"];
+  setOptions: { value: string; label: string }[];
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -333,8 +329,8 @@ function Step3({
 
 // ─── Step 4 — Review ──────────────────────────────────────────────────────────
 
-function Step4({ data, photoUrl }: { data: Partial<FormData>; photoUrl?: string }) {
-  const set = MOCK_SETS.find((s) => s.id === data.setId);
+function Step4({ data, photoUrl, sets }: { data: Partial<FormData>; photoUrl?: string; sets: GraduationSet[] }) {
+  const set = sets.find((s) => s.id === data.setId);
   const preview = photoUrl || data.profile_image;
   return (
     <div className="flex flex-col gap-5">
@@ -413,9 +409,31 @@ function RegisterContent() {
   const [success, setSuccess] = useState(false);
   const [photoUrl, setPhotoUrl] = useState("");
   const [photoError, setPhotoError] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [sets, setSets] = useState<GraduationSet[]>([]);
+
+  // Real graduating sets from the backend; fall back to mocks if it's unreachable.
+  useEffect(() => {
+    let active = true;
+    apiGetSets()
+      .then((res) => {
+        if (active && res.data.length > 0) setSets(res.data);
+      })
+      .catch(() => {
+        if (active) setSets(MOCK_SETS);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const searchParams = useSearchParams();
   const notice = searchParams.get("notice");
+
+  const setOptions = (sets.length > 0 ? sets : MOCK_SETS).map((s) => ({
+    value: s.id,
+    label: `Class of ${s.set_name}`,
+  }));
 
   const {
     register,
@@ -447,6 +465,7 @@ function RegisterContent() {
 
   async function onSubmit(data: FormData) {
     setLoading(true);
+    setSubmitError("");
     try {
       await apiRegister({
         full_name:     data.full_name,
@@ -461,22 +480,14 @@ function RegisterContent() {
         bio:           data.bio    || undefined,
         profile_image: photoUrl || undefined,
       });
-      const set = MOCK_SETS.find((s) => s.id === data.setId);
-      saveCurrentUser({
-        full_name:     data.full_name,
-        email:         data.email,
-        role:          "member",
-        setId:         data.setId,
-        set_name:      set?.set_name,
-        gender:        data.gender,
-        phone:         data.phone,
-        address:       data.address,
-        birth_day:     data.birth_day,
-        birth_month:   data.birth_month,
-        bio:           data.bio,
-        profile_image: photoUrl || undefined,
-      });
+      // No session here: the account is unverified until an admin approves it.
       setSuccess(true);
+    } catch (err) {
+      setSubmitError(
+        err instanceof ApiRequestError
+          ? err.message
+          : "Unable to reach the server. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -590,8 +601,14 @@ function RegisterContent() {
                 photoError={photoError}
               />
             )}
-            {step === 3 && <Step3 register={register} errors={errors} />}
-            {step === 4 && <Step4 data={getValues()} photoUrl={photoUrl} />}
+            {step === 3 && <Step3 register={register} errors={errors} setOptions={setOptions} />}
+            {step === 4 && <Step4 data={getValues()} photoUrl={photoUrl} sets={sets} />}
+
+            {submitError && (
+              <div className="mt-5 bg-[var(--danger-bg)] text-[var(--danger)] text-sm rounded-lg px-4 py-3">
+                {submitError}
+              </div>
+            )}
 
             <div className="flex justify-between mt-7 gap-3">
               {step > 1 ? (

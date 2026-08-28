@@ -52,7 +52,6 @@ import type {
 } from "@/lib/types";
 
 import {
-  MOCK_AUTH_USER,
   MOCK_AUTH_ME_RESPONSE,
   MOCK_MEMBERS,
   MOCK_SETS,
@@ -177,12 +176,71 @@ export async function apiLogin(
   return ok({ user: match.user, access_token: "mock_access_token" });
 }
 
-/** POST /api/auth/register */
+/** POST /api/auth/register — creates a real account; backend returns 409 for
+ *  duplicate email, 400 for missing fields / password < 8 chars / bad set id.
+ *  New users are unverified (is_verified:false) until an admin approves them,
+ *  so no session is created here — the caller shows a success screen.
+ */
 export async function apiRegister(
   payload: RegisterPayload
 ): Promise<ApiSuccess<{ user: AuthUser; access_token: string }>> {
-  await delay(600);
-  return ok({ user: MOCK_AUTH_USER, access_token: "mock_access_token" });
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+  if (!apiUrl) {
+    // Strict like login: registration requires a real backend.
+    throw new ApiRequestError(0, "Registration isn't available yet. Please try again later.");
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${apiUrl}/api/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        fullName: payload.full_name,
+        email: payload.email,
+        password: payload.password,
+        setId: payload.setId,
+        gender: payload.gender,
+        phone: payload.phone,
+        address: payload.address,
+        bio: payload.bio,
+        profileImage: payload.profile_image,
+      }),
+    });
+  } catch {
+    throw new ApiRequestError(0, "Unable to reach the server. Please try again.");
+  }
+
+  if (!res.ok) {
+    let message = "Registration failed";
+    try {
+      const body = await res.json();
+      message = typeof body?.error === "string" ? body.error : message;
+    } catch {
+      /* non-JSON error body — keep default */
+    }
+    throw new ApiRequestError(res.status, message);
+  }
+
+  const json = (await res.json()) as
+    | { user?: { id: string; email: string; fullName: string; role?: string; isVerified?: boolean } }
+    | undefined;
+  const u = json?.user;
+  if (!u) {
+    throw new ApiRequestError(0, "Unexpected server response. Please try again.");
+  }
+  return ok({
+    user: {
+      id: u.id,
+      full_name: u.fullName,
+      email: u.email,
+      role: u.role === "admin" ? "admin" : "member",
+      is_verified: !!u.isVerified,
+    },
+    access_token: "",
+  });
 }
 
 /**

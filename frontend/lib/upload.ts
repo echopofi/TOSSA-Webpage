@@ -49,7 +49,9 @@ export function fileToResizedDataUrl(file: File): Promise<string> {
 
 /**
  * Upload a photo and return a URL to store on the member/photocard.
- * Falls back to the resized data URL in mock mode so the ID card still renders.
+ * Real path: signed Cloudinary upload. If Cloudinary is not configured yet
+ * (invalid cloud name), fall back to the resized data URL with a warning so
+ * registration and the ID card keep working end-to-end.
  */
 export async function uploadMemberPhoto(file: File): Promise<string> {
   if (!isRealBackend()) {
@@ -57,22 +59,29 @@ export async function uploadMemberPhoto(file: File): Promise<string> {
   }
 
   // Real path: signed Cloudinary upload.
-  const sigRes = await apiGetCloudinarySignature("members");
-  const sig = sigRes.data;
-  const form = new FormData();
-  form.append("file", file);
-  form.append("api_key", sig.apiKey);
-  form.append("timestamp", String(sig.timestamp));
-  form.append("signature", sig.signature);
-  form.append("folder", sig.folder);
+  try {
+    const sigRes = await apiGetCloudinarySignature("members");
+    const sig = sigRes.data;
+    const form = new FormData();
+    form.append("file", file);
+    form.append("api_key", sig.apiKey);
+    form.append("timestamp", String(sig.timestamp));
+    form.append("signature", sig.signature);
+    form.append("folder", sig.folder);
 
-  const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`,
-    { method: "POST", body: form }
-  );
-  const json = await res.json();
-  if (!res.ok || !json.secure_url) {
-    throw new Error(json.error?.message ?? "Image upload failed");
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`,
+      { method: "POST", body: form }
+    );
+    const json = await res.json();
+    if (!res.ok || !json.secure_url) {
+      throw new Error(json.error?.message ?? "Image upload failed");
+    }
+    return json.secure_url as string;
+  } catch (err) {
+    console.warn(
+      "Cloudinary upload unavailable (" + (err instanceof Error ? err.message : "error") + ") — falling back to a local data URL."
+    );
+    return fileToResizedDataUrl(file);
   }
-  return json.secure_url as string;
 }
