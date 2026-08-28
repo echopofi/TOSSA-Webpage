@@ -188,4 +188,32 @@ async function updateMemberRole(req, res) {
   }
 }
 
-module.exports = { getDashboard, allPayments, allDuesPayments, deactivateMember, updateMemberRole };
+// POST /api/admin/members/:id/verify
+// Approves a registered member so they can sign in (login rejects
+// unverified accounts with 403). Takes a member id (from the register
+// response / member record), not a user id.
+async function verifyMember(req, res) {
+  try {
+    const member = await prisma.member.findUnique({ where: { id: req.params.id } });
+    if (!member) {
+      return res.status(404).json({ error: 'Member not found' });
+    }
+
+    await prisma.user.update({
+      where: { id: member.userId },
+      data: { isVerified: true },
+    });
+
+    await prisma.member.update({
+      where: { id: member.id },
+      data: { isActive: true },
+    });
+
+    res.json({ message: 'Member verified' });
+  } catch (err) {
+    console.error('Verify member error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+module.exports = { getDashboard, allPayments, allDuesPayments, deactivateMember, updateMemberRole, verifyMember };

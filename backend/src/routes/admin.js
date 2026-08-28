@@ -1,5 +1,5 @@
 const express = require('express');
-const { getDashboard, allPayments, allDuesPayments, deactivateMember, updateMemberRole } = require('../controllers/adminController');
+const { getDashboard, allPayments, allDuesPayments, deactivateMember, updateMemberRole, verifyMember } = require('../controllers/adminController');
 const {
   createPosition,
   adminListApplications,
@@ -17,6 +17,7 @@ router.get('/payments', allPayments);
 router.get('/dues-payments', allDuesPayments);
 router.post('/members/:id/deactivate', deactivateMember);
 router.put('/members/:id/role', updateMemberRole);
+router.post('/members/:id/verify', verifyMember);
 
 // Elections — admin review
 router.get('/elections/applications', adminListApplications);
