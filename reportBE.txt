@@ -1,0 +1,67 @@
+# Backend Progress — Feature Build
+
+Status: COMPLETE — all 93 tests passing (10 suites).
+
+## 1. Confirmed fee values
+- `src/config/index.js`: `registrationFeeAmount` default 5000 -> **1000** (₦1,000 one-time).
+- Annual dues **₦2,000/yr** and web-fee **₦1,000/yr** are no longer hardcoded.
+  Stored per-cycle on `dues_cycles` with new `fee_type` enum `'dues' | 'web'`.
+- `duesController.js` (list/create/update) now surfaces and accepts `feeType`.
+- Amounts are always read from the DB (server-side); clients never set prices.
+- Fixed pre-existing bug: `sendDuesReminder` divided `cycle.amount` by 100
+  (structured in naira), which would show ₦20 instead of ₦2,000.
+
+## 2. Election / Contest Forms
+- Prisma: new `ElectionPosition` and `ElectionApplication` models;
+  `PaymentTransaction.electionApplicationId` (nullable FK) for the ledger.
+- `electionController.js`:
+  - GET  /api/elections/positions           (public, open only, fee comes from DB)
+  - POST /api/elections/apply               (member; idempotent for pending tx;
+                                            amount = position.feeAmount * 100 always)
+  - GET  /api/elections/verify/:reference   (checks amount + Paystack status,
+                                            writes ledger, emails on success)
+  - GET  /api/elections/my-applications     (member)
+  - Admin: POST positions, GET applications (filters), PATCH approve/reject
+- Webhook (`webhookController.js`): new `type === 'election'` branch — marks
+  application `submitted`, validates amount against position fee, writes ledger,
+  sends confirmation email.
+- Routes: `src/routes/elections.js` + admin routes in `src/routes/admin.js`.
+
+## 3. Virtual member ID card
+- No dedicated card endpoint needed: `GET /api/members/:id` + session data
+  already serve the ID card fields (frontend renders a printable card from them).
+  Registration now stores the identity fields the card needs (see #4/registration).
+  (Card layout itself is frontend work — frontend phase.)
+
+## 4. Cloudinary signed photo upload
+- `uploadController.js` + `src/routes/upload.js`:
+  POST /api/upload/cloudinary-signature -> `{ signature, timestamp, apiKey,
+  cloudName, folder }`. Works PRE-AUTH so registration can upload before an
+  account exists. SHA-256 HMAC per Cloudinary docs; never leaks apiSecret.
+- Registration (`authController.register`) stores `gender`, `address`, `bio`,
+  `profileImage` (+ keeps optional `matricNumber`, `phone`).
+- Members: `PUT /api/members/me/photo` lets a member update their own photo.
+- REMINDER: add CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET
+  to `backend/.env` (`.env.example` is updated; endpoint 500s until set).
+
+## 5. Exco members showcase
+- Prisma: new `ExcoOfficer` model (position, member, termLabel, isCurrent, startedAt,
+  endedAt). Assigning a current officer to the same position auto-ends the previous.
+- `excoController.js`:
+  - GET  /api/exco   (public — only current officers, joins member name/photo/set)
+  - Admin: POST /api/admin/exco (assign), PATCH /api/admin/exco/:id (end term)
+
+## Data model / DB
+- `prisma/schema.prisma` updated; `prisma generate` + `prisma db push` run against
+  local Postgres (`alumni_db`) — DB is in sync.
+- `tests/helpers/seed.js` cleanup order updated for new tables; seeds now create a
+  ₦2,000 dues cycle, a ₦1,000 web-fee cycle, and an open "President" position.
+
+## Tests
+- New: `elections.test.js` (positions, apply, idempotency, verify, ledger,
+  my-applications, admin create/review/approve), `exco.test.js` (list, assign,
+  replace current, end term, non-admin 403), `upload.test.js` (signature no leak).
+- Full suite: `npm test` -> 10/10 suites, 93/93 tests passing.
+
+## Not done here (frontend phase)
+- None backend blocking. Cloudinary keys must be added to backend/.env by the user.

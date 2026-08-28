@@ -1,0 +1,73 @@
+# Frontend Progress — Feature Build
+
+Status: COMPLETE — `next build` passes (12 routes incl. /elections + /exco).
+New files lint-clean; only pre-existing lint errors remain (apostrophes in
+home/payments/sets/login, unused vars in api.ts/register — untouched).
+
+## 1. Confirmed fee values
+- Registration fee: mock verify now returns **₦1,000** (`apiVerifyRegistration`).
+- Dues cycles in `lib/mockData.ts` corrected from placeholder ₦25k–30k to:
+  - Annual dues **₦2,000/yr** (`fee_type: "dues"`)
+  - Web-fee **₦1,000/yr** as a SEPARATE cycle (`fee_type: "web"`)
+- `lib/types.ts` `DuesCycle` adds `fee_type: "dues" | "web"`.
+- `MOCK_DUES_SUMMARY` total updated (₦3,000) so dashboard/payments reflect the
+  confirmed values. Amounts are never authored in UI — they come from the API.
+
+## 2. Election / Contest Forms
+- Types: `ElectionPosition`, `ElectionApplication`, `ApplicationStatus`.
+- Mocks: `MOCK_ELECTION_POSITIONS` (President ₦40k, GenSec ₦20k, Treasurer
+  ₦15k open; Publicity closed) + empty `MOCK_ELECTION_APPLICATIONS`.
+- API: `apiGetElectionPositions`, `apiApplyForElection` (returns Paystack
+  authorization URL), `apiVerifyElectionApplication`, `apiMyElectionApplications`.
+- New **/elections** page (auth layout + sidebar):
+  - Lists open positions with fees + Apply button.
+  - Apply dialog: manifesto textarea → Paystack redirect.
+  - Post-redirect `?election=success&reference=` banner (processing/confirmed/failed).
+  - "My Applications" list with status pills.
+  - "How it works" note: approved ≠ won (winners go to Exco after election).
+- Dashboard: "My Election Applications" panel.
+
+## 3. Virtual member ID card
+- New `components/id/MemberIdCard.tsx` — front (logo, member photo/initial
+  placeholder, name, class, gender) + back (membership no., status, joined date).
+- Photo captured at signup (step 4 of registration) so card renders immediately.
+- Rendered on the dashboard (left column beside Election Applications).
+
+## 4. Cloudinary signed photo upload
+- New `lib/upload.ts`:
+  - Mock mode: downscale on canvas → data URL (works fully offline).
+  - Real mode (`NEXT_PUBLIC_API_URL` set): POST /api/upload/cloudinary-signature
+    → unsigned upload to Cloudinary → secure_url. Signature/key/folder all served;
+    API secret never shipped.
+- Registration (Step 2) now has a required photo field with preview + error
+  states; `profile_image` is in `RegisterPayload`, persisted to session.
+- `lib/session.ts` SessionUser extended (gender/phone/address/birth/bio/photo);
+  `apiMe` maps them onto the member so the card/profile reflect the registrant.
+- Later photo change: wire to `PUT /api/members/me/photo` once the profile-edit
+  page exists (not present in this mock app yet).
+
+## 5. Exco members showcase
+- Types: `ExcoOfficer`, `AssignOfficerPayload`; mocks `MOCK_EXCO_OFFICERS`.
+- API: `apiGetExcoOfficers` (+ admin assign/end-term).
+- New **/exco** page (auth layout; also linked from public navbar): grid cards
+  with photo, position, name, class, term label; empty state message.
+- Sidebar: added "Elections", "Our Exco"; removed hardcoded `Ada O.` from the
+  payments layout mobile navbar (now reads the session user like dashboard).
+
+## Admin UI (elections + exco)
+- `components/admin/ElectionReviewPanel` (mounted on /admin):
+  - Create/open a position (title + fee in ₦ + election year).
+  - Review applications table (photo, name, position, fee, date, status) with
+    Approve / Reject (+ Undo). Shown count = applications awaiting review.
+- `components/admin/ExcoAssignmentPanel` (mounted on /admin):
+  - Appoint officer: pick position (from open positions), term label, member
+    search (name/email) → assign.
+  - Current Exco list with "End Term" action. Re-assigning the same position
+    ends the previous term server-side.
+
+## Not done here / notes
+- Profile-edit page for changing the photo post-signup (endpoint exists;
+  registration upload already covers the card requirement). Suggested as follow-up.
+- /exco is served under the authenticated layout; the public navbar link routes
+  there as well — fine for the mock phase, adjust layout when going public.
+- Amounts everywhere remain server-sourced; mocks just mirror the confirmed values.

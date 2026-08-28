@@ -49,6 +49,7 @@ export interface RegisterPayload {
   birth_day?: string;
   birth_month?: string;
   bio?: string;
+  profile_image?: string; // Cloudinary URL — uploaded at signup (ID card)
 }
 
 // ─── Member ───────────────────────────────────────────────────────────────────
@@ -146,6 +147,7 @@ export interface DuesCycle {
   id: string;
   title: string;              // e.g. "2024/2025 Term 1"
   cycle_type: "term" | "year";
+  fee_type: "dues" | "web";   // annual dues vs web-fee
   start_date: string;
   end_date: string;
   amount: number;
@@ -181,6 +183,82 @@ export interface DuesCycleStatus {
   cycle: DuesCycle;
   dues_payment?: DuesPayment; // undefined if never initiated
   status: "paid" | "partial" | "arrears" | "unpaid"; // unpaid = no record yet
+}
+
+// ─── Elections ─────────────────────────────────────────────────────────────────
+
+export type ElectionApplicationStatus =
+  | "pending_payment"
+  | "submitted"
+  | "approved"
+  | "rejected";
+
+/** Mirrors election_positions table */
+export interface ElectionPosition {
+  id: string;
+  title: string;                  // e.g. "President"
+  fee_amount: number;             // set by admin; always served from DB
+  election_year: string;          // e.g. "2026/2027"
+  is_open: boolean;
+  created_at: string;
+}
+
+/** Mirrors election_applications table */
+export interface ElectionApplication {
+  id: string;
+  position_id: string;
+  position: Pick<ElectionPosition, "id" | "title" | "fee_amount" | "election_year">;
+  paystack_reference: string;
+  status: ElectionApplicationStatus;
+  manifesto?: string;
+  applied_at: string;
+  created_at: string;
+  // Admin review responses also nest the applicant:
+  member?: {
+    id: string;
+    full_name: string;
+    email?: string;
+    profile_image?: string;
+    set_name?: string;
+  };
+}
+
+// ─── Exco ─────────────────────────────────────────────────────────────────────
+
+/** Mirrors exco_officers table (joined with member + position) */
+export interface ExcoOfficer {
+  id: string;
+  member_id: string;
+  position_id: string;
+  position: string;               // position title, e.g. "President"
+  term_label: string;             // e.g. "2026/2027"
+  is_current: boolean;
+  started_at: string;
+  ended_at?: string;
+  member: {
+    id: string;
+    full_name: string;
+    profile_image?: string;
+    set_name?: string;
+  };
+}
+
+/** POST /api/admin/exco payload */
+export interface AssignOfficerPayload {
+  positionId: string;
+  memberId: string;
+  termLabel: string;
+}
+
+// ─── Cloudinary ───────────────────────────────────────────────────────────────
+
+/** POST /api/upload/cloudinary-signature response */
+export interface CloudinarySignature {
+  signature: string;
+  timestamp: number;
+  apiKey: string;
+  cloudName: string;
+  folder: string;
 }
 
 // ─── Announcements ────────────────────────────────────────────────────────────

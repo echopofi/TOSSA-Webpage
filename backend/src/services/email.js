@@ -48,6 +48,12 @@ async function sendRegistrationConfirmation(user) {
 }
 
 async function sendPaymentConfirmation(user, payment) {
+  const typeLabels = {
+    registration: 'Registration Fee',
+    dues: 'Annual Dues',
+    web: 'Web-fee',
+    election: 'Election Application Fee',
+  };
   return sendMail({
     to: user.email,
     subject: 'Payment Confirmed',
@@ -56,7 +62,7 @@ async function sendPaymentConfirmation(user, payment) {
       <p>Hello ${user.fullName},</p>
       <p>We have received your payment of <strong>₦${(payment.amount / 100).toLocaleString()}</strong>.</p>
       <p>Reference: ${payment.reference}</p>
-      <p>Type: ${payment.type === 'registration' ? 'Registration Fee' : 'Dues'}</p>
+      <p>Type: ${typeLabels[payment.type] || 'Dues'}</p>
     `,
   });
 }
@@ -69,7 +75,7 @@ async function sendDuesReminder(user, cycle) {
       <h2>Dues Payment Reminder</h2>
       <p>Hello ${user.fullName},</p>
       <p>This is a reminder that dues for <strong>${cycle.title}</strong> are due by <strong>${cycle.dueDate}</strong>.</p>
-      <p>Amount: <strong>₦${(cycle.amount / 100).toLocaleString()}</strong></p>
+      <p>Amount: <strong>₦${cycle.amount.toLocaleString()}</strong></p>
     `,
   });
 }

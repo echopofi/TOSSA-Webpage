@@ -136,6 +136,31 @@ async function getMember(req, res) {
   }
 }
 
+// PUT /api/members/me/photo — member updates their own profile photo
+async function updateOwnPhoto(req, res) {
+  try {
+    const { profileImage } = req.body;
+    if (!profileImage || typeof profileImage !== 'string') {
+      return res.status(400).json({ error: 'profileImage URL is required' });
+    }
+
+    const member = await prisma.member.findFirst({ where: { userId: req.user.id } });
+    if (!member) {
+      return res.status(404).json({ error: 'Member not found' });
+    }
+
+    const updated = await prisma.member.update({
+      where: { id: member.id },
+      data: { profileImage },
+    });
+
+    res.json({ id: updated.id, profileImage: updated.profileImage });
+  } catch (err) {
+    console.error('Update own photo error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
 // PATCH /api/members/:id — admin
 async function updateMember(req, res) {
   try {
@@ -272,4 +297,4 @@ async function updateSet(req, res) {
   }
 }
 
-module.exports = { listMembers, searchMembers, getMember, updateMember, listSets, createSet, updateSet };
+module.exports = { listMembers, searchMembers, getMember, updateOwnPhoto, updateMember, listSets, createSet, updateSet };

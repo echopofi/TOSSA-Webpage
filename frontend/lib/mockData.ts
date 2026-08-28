@@ -17,6 +17,9 @@ import type {
   Announcement,
   AdminDashboard,
   MemberMilestone,
+  ElectionPosition,
+  ElectionApplication,
+  ExcoOfficer,
 } from "@/lib/types";
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -241,15 +244,17 @@ export const MOCK_MILESTONES: MemberMilestone[] = [
 ];
 
 // ─── Dues Cycles ──────────────────────────────────────────────────────────────
+// Confirmed fees: annual dues ₦2,000/yr, web-fee ₦1,000/yr (separate fee_type).
 
 export const MOCK_DUES_CYCLES: DuesCycle[] = [
   {
     id: "cycle_2023",
     title: "2023/2024 Annual Dues",
     cycle_type: "year",
+    fee_type: "dues",
     start_date: "2023-01-01T00:00:00Z",
     end_date:   "2024-12-31T23:59:59Z",
-    amount: 25000,
+    amount: 2000,
     due_date: "2024-03-31T00:00:00Z",
     is_active: false,
     paid_count: 380,
@@ -259,12 +264,26 @@ export const MOCK_DUES_CYCLES: DuesCycle[] = [
     id: "cycle_2025",
     title: "2025/2026 Annual Dues",
     cycle_type: "year",
+    fee_type: "dues",
     start_date: "2025-01-01T00:00:00Z",
     end_date:   "2026-12-31T23:59:59Z",
-    amount: 30000,
+    amount: 2000,
     due_date: "2025-12-31T00:00:00Z",
     is_active: true,
     paid_count: 203,
+    created_at: "2025-01-01T08:00:00Z",
+  },
+  {
+    id: "cycle_webfee_2025",
+    title: "2025/2026 Annual Web-fee",
+    cycle_type: "year",
+    fee_type: "web",
+    start_date: "2025-01-01T00:00:00Z",
+    end_date:   "2026-12-31T23:59:59Z",
+    amount: 1000,
+    due_date: "2025-12-31T00:00:00Z",
+    is_active: true,
+    paid_count: 118,
     created_at: "2025-01-01T08:00:00Z",
   },
 ];
@@ -275,9 +294,9 @@ export const MOCK_DUES_CYCLES: DuesCycle[] = [
 export const MOCK_DUES_PAYMENTS: DuesPayment[] = [];
 
 export const MOCK_DUES_SUMMARY: DuesSummary = {
-  total_owed: 55000,
+  total_owed: 3000,
   total_paid: 0,
-  outstanding: 55000,
+  outstanding: 3000,
   cycles: [
     {
       cycle: MOCK_DUES_CYCLES[0],
@@ -285,6 +304,10 @@ export const MOCK_DUES_SUMMARY: DuesSummary = {
     },
     {
       cycle: MOCK_DUES_CYCLES[1],
+      status: "unpaid",
+    },
+    {
+      cycle: MOCK_DUES_CYCLES[2],
       status: "unpaid",
     },
   ] satisfies DuesCycleStatus[],
@@ -351,6 +374,94 @@ export const MOCK_ANNOUNCEMENTS: Announcement[] = [
     scheduled_at: "2025-09-01T08:00:00Z",
     created_at: "2025-08-26T10:00:00Z",
     read: false,
+  },
+];
+
+// ─── Elections ────────────────────────────────────────────────────────────────
+
+export const MOCK_ELECTION_POSITIONS: ElectionPosition[] = [
+  {
+    id: "elec_pos_president",
+    title: "President",
+    fee_amount: 40000,
+    election_year: "2026/2027",
+    is_open: true,
+    created_at: "2026-08-01T08:00:00Z",
+  },
+  {
+    id: "elec_pos_secretary",
+    title: "General Secretary",
+    fee_amount: 20000,
+    election_year: "2026/2027",
+    is_open: true,
+    created_at: "2026-08-01T08:00:00Z",
+  },
+  {
+    id: "elec_pos_treasurer",
+    title: "Treasurer",
+    fee_amount: 15000,
+    election_year: "2026/2027",
+    is_open: true,
+    created_at: "2026-08-01T08:00:00Z",
+  },
+  {
+    id: "elec_pos_publicity",
+    title: "Publicity Secretary",
+    fee_amount: 5000,
+    election_year: "2026/2027",
+    is_open: false,
+    created_at: "2026-08-01T08:00:00Z",
+  },
+];
+
+// A newly signed-up member has not applied to anything yet.
+export const MOCK_ELECTION_APPLICATIONS: ElectionApplication[] = [];
+
+export const MOCK_EXCO_OFFICERS: ExcoOfficer[] = [
+  {
+    id: "exco_001",
+    member_id: "mem_001",
+    position_id: "elec_pos_president",
+    position: "President",
+    term_label: "2026/2027",
+    is_current: true,
+    started_at: "2025-09-01T08:00:00Z",
+    member: {
+      id: "mem_001",
+      full_name: "Ada Okonkwo",
+      profile_image: "https://i.pravatar.cc/150?img=47",
+      set_name: "2005",
+    },
+  },
+  {
+    id: "exco_002",
+    member_id: "mem_002",
+    position_id: "elec_pos_secretary",
+    position: "General Secretary",
+    term_label: "2026/2027",
+    is_current: true,
+    started_at: "2025-09-01T08:00:00Z",
+    member: {
+      id: "mem_002",
+      full_name: "Emeka Nwosu",
+      profile_image: "https://i.pravatar.cc/150?img=12",
+      set_name: "2005",
+    },
+  },
+  {
+    id: "exco_003",
+    member_id: "mem_003",
+    position_id: "elec_pos_treasurer",
+    position: "Treasurer",
+    term_label: "2026/2027",
+    is_current: true,
+    started_at: "2025-09-01T08:00:00Z",
+    member: {
+      id: "mem_003",
+      full_name: "Ngozi Adesanya",
+      profile_image: "https://i.pravatar.cc/150?img=32",
+      set_name: "2005",
+    },
   },
 ];
 

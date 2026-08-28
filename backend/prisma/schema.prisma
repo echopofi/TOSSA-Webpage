@@ -55,6 +55,8 @@ model Member {
   duesPayments         DuesPayment[]
   milestones           MemberMilestone[]
   targetAnnouncements  Announcement[]       @relation("TargetMember")
+  electionApplications ElectionApplication[]
+  excoOfficers         ExcoOfficer[]
 
   @@map("members")
 }
@@ -152,6 +154,7 @@ model DuesCycle {
   id        String   @id @default(uuid()) @db.Uuid
   title     String   @db.VarChar(150)
   cycleType String   @map("cycle_type") @db.VarChar(20)
+  feeType   String   @default("dues") @map("fee_type") @db.VarChar(20)
   startDate DateTime @map("start_date") @db.Date()
   endDate   DateTime @map("end_date") @db.Date()
   amount    Int
@@ -185,20 +188,80 @@ model DuesPayment {
 }
 
 model PaymentTransaction {
-  id            String   @id @default(uuid()) @db.Uuid
-  paymentId     String?  @map("payment_id") @db.Uuid
-  duesPaymentId String?  @map("dues_payment_id") @db.Uuid
-  amount        Int
-  status        String   @db.VarChar(20)
-  channel       String   @default("paystack") @db.VarChar(30)
-  reference     String   @unique @db.VarChar(255)
-  metadata      Json?    @default("{}")
-  createdAt     DateTime @default(now()) @map("created_at")
+  id                      String   @id @default(uuid()) @db.Uuid
+  paymentId               String?  @map("payment_id") @db.Uuid
+  duesPaymentId           String?  @map("dues_payment_id") @db.Uuid
+  electionApplicationId   String?  @map("election_application_id") @db.Uuid
+  amount                  Int
+  status                  String   @db.VarChar(20)
+  channel                 String   @default("paystack") @db.VarChar(30)
+  reference               String   @unique @db.VarChar(255)
+  metadata                Json?    @default("{}")
+  createdAt               DateTime @default(now()) @map("created_at")
 
-  payment     Payment?     @relation(fields: [paymentId], references: [id], onDelete: Restrict)
-  duesPayment DuesPayment? @relation(fields: [duesPaymentId], references: [id], onDelete: Restrict)
+  payment             Payment?             @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  duesPayment         DuesPayment?         @relation(fields: [duesPaymentId], references: [id], onDelete: Restrict)
+  electionApplication ElectionApplication? @relation(fields: [electionApplicationId], references: [id], onDelete: Restrict)
 
   @@index([paymentId], map: "idx_payment_transactions_payment_id")
   @@index([duesPaymentId], map: "idx_payment_transactions_dues_payment_id")
+  @@index([electionApplicationId], map: "idx_payment_transactions_election_application_id")
   @@map("payment_transactions")
+}
+
+// ─── Elections / Contests ────────────────────────────────────────────────────
+
+model ElectionPosition {
+  id           String   @id @default(uuid()) @db.Uuid
+  title        String   @db.VarChar(150)
+  feeAmount    Int      @map("fee_amount")
+  electionYear String   @map("election_year") @db.VarChar(20)
+  isOpen       Boolean  @default(true) @map("is_open")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  applications ElectionApplication[]
+  excoOfficers ExcoOfficer[]
+
+  @@index([isOpen], map: "idx_election_positions_is_open")
+  @@map("election_positions")
+}
+
+model ElectionApplication {
+  id                String    @id @default(uuid()) @db.Uuid
+  memberId          String    @map("member_id") @db.Uuid
+  positionId        String    @map("position_id") @db.Uuid
+  paystackReference String?   @unique @map("paystack_reference") @db.VarChar(255)
+  status            String    @default("pending_payment") @db.VarChar(30)
+  manifesto         String?   @db.Text()
+  appliedAt         DateTime  @default(now()) @map("applied_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  member            Member                @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  position          ElectionPosition      @relation(fields: [positionId], references: [id], onDelete: Restrict)
+  ledger            PaymentTransaction[]
+
+  @@index([memberId], map: "idx_election_applications_member_id")
+  @@index([positionId], map: "idx_election_applications_position_id")
+  @@index([status], map: "idx_election_applications_status")
+  @@map("election_applications")
+}
+
+// ─── Exco (currently serving officers) ───────────────────────────────────────
+
+model ExcoOfficer {
+  id         String    @id @default(uuid()) @db.Uuid
+  positionId String    @map("position_id") @db.Uuid
+  memberId   String    @map("member_id") @db.Uuid
+  termLabel  String    @map("term_label") @db.VarChar(50)
+  isCurrent  Boolean   @default(true) @map("is_current")
+  startedAt  DateTime  @default(now()) @map("started_at")
+  endedAt    DateTime? @map("ended_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  position ElectionPosition @relation(fields: [positionId], references: [id], onDelete: Restrict)
+  member   Member           @relation(fields: [memberId], references: [id], onDelete: Restrict)
+
+  @@index([isCurrent], map: "idx_exco_officers_is_current")
+  @@index([positionId], map: "idx_exco_officers_position_id")
+  @@map("exco_officers")
 }

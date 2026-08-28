@@ -10,6 +10,8 @@ import {
   CreditCard,
   User,
   Megaphone,
+  Vote,
+  Shield,
   LogOut,
 } from "lucide-react";
 import clsx from "clsx";
@@ -18,6 +20,8 @@ const navItems = [
   { href: "/dashboard",    icon: LayoutDashboard, label: "Dashboard"   },
   { href: "/sets",         icon: Users,           label: "My Set"      },
   { href: "/payments",     icon: CreditCard,      label: "Dues & Payments" },
+  { href: "/elections",    icon: Vote,            label: "Elections"   },
+  { href: "/exco",         icon: Shield,          label: "Our Exco"    },
   { href: "/profile",      icon: User,            label: "My Profile"  },
   { href: "/admin",        icon: Megaphone,       label: "Admin Panel", admin: true },
 ];

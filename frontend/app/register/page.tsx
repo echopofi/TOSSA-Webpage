@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
-import { GraduationCap, ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { GraduationCap, ArrowLeft, ArrowRight, Check, Camera, Loader2 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Button from "@/components/ui/Button";
@@ -12,6 +12,7 @@ import Select from "@/components/ui/Select";
 import { MOCK_SETS } from "@/lib/mockData";
 import { apiRegister } from "@/lib/api";
 import { saveCurrentUser } from "@/lib/session";
+import { uploadMemberPhoto } from "@/lib/upload";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,6 +29,7 @@ interface FormData {
   birth_day: string;
   birth_month: string;
   bio: string;
+  profile_image: string;    // Cloudinary URL, uploaded at signup for the ID card
   // Step 3 — Set info
   setId: string;            // spec: "requires setId at signup" — camelCase
 }
@@ -71,6 +73,81 @@ const monthOptions = [
   { value: "November",  label: "November"  },
   { value: "December",  label: "December"  },
 ];
+
+// ─── Photo upload ─────────────────────────────────────────────────────────────
+
+function PhotoUploadField({
+  onPhoto,
+  photoUrl,
+  error,
+}: {
+  onPhoto: (dataUrl: string) => void;
+  photoUrl: string;
+  error?: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadError("");
+    try {
+      const url = await uploadMemberPhoto(file);
+      onPhoto(url);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-sm font-medium text-[var(--text-heading)] font-[family-name:var(--font-heading)]">
+        Profile photo{" "}
+        <span className="text-[var(--text-muted)] font-normal">(required — used on your member ID card)</span>
+      </label>
+
+      <label
+        className={`flex items-center gap-4 p-4 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${
+          photoUrl
+            ? "border-[var(--success)] bg-[var(--success-bg)]"
+            : "border-[var(--border-subtle)] hover:border-[var(--primary)]"
+        }`}
+      >
+        {photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={photoUrl}
+            alt="Profile preview"
+            className="w-16 h-16 rounded-full object-cover shrink-0"
+          />
+        ) : (
+          <div className="w-16 h-16 rounded-full bg-[var(--primary-light)] text-[var(--primary)] flex items-center justify-center shrink-0">
+            <Camera size={24} />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-[var(--text-heading)]">
+            {photoUrl ? "Photo selected — click to change" : "Click to upload"}
+          </p>
+          <p className="text-xs text-[var(--text-muted)] mt-0.5">
+            {uploading ? "Uploading…" : "JPG or PNG. We use Cloudinary for secure hosting."}
+          </p>
+          {uploadError && <p className="text-xs text-[var(--danger)] mt-1">{uploadError}</p>}
+          {!uploadError && error && <p className="text-xs text-[var(--danger)] mt-1">{error}</p>}
+        </div>
+        {uploading && (
+          <Loader2 size={18} className="text-[var(--primary)] animate-spin shrink-0" />
+        )}
+        <input type="file" accept="image/jpeg,image/png" className="sr-only" onChange={handleFile} />
+      </label>
+    </div>
+  );
+}
 
 // ─── Step 1 — Account ─────────────────────────────────────────────────────────
 
@@ -133,9 +210,15 @@ function Step1({
 function Step2({
   register,
   errors,
+  onPhoto,
+  photoUrl,
+  photoError,
 }: {
   register: ReturnType<typeof useForm<FormData>>["register"];
   errors: ReturnType<typeof useForm<FormData>>["formState"]["errors"];
+  onPhoto: (dataUrl: string) => void;
+  photoUrl: string;
+  photoError?: string;
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -144,9 +227,11 @@ function Step2({
           Tell us about yourself
         </h2>
         <p className="text-sm text-[var(--text-muted)] mt-1">
-          This information builds your alumni profile. Your profile photo can be added after registration.
+          This information builds your alumni profile and member ID card.
         </p>
       </div>
+
+      <PhotoUploadField onPhoto={onPhoto} photoUrl={photoUrl} error={photoError} />
 
       {/* Spec v2: users.full_name — single combined field */}
       <Input
@@ -202,11 +287,6 @@ function Step2({
           {...register("bio")}
         />
       </div>
-
-      {/* Cloudinary note — profile_image is set post-registration via profile edit */}
-      <div className="bg-[var(--primary-light)] rounded-xl px-4 py-3 text-xs text-[var(--text-muted)]">
-        📷 Profile photo: You can upload your profile picture after your account is verified, from your profile settings. We use Cloudinary for secure image hosting.
-      </div>
     </div>
   );
 }
@@ -252,8 +332,9 @@ function Step3({
 
 // ─── Step 4 — Review ──────────────────────────────────────────────────────────
 
-function Step4({ data }: { data: Partial<FormData> }) {
+function Step4({ data, photoUrl }: { data: Partial<FormData>; photoUrl?: string }) {
   const set = MOCK_SETS.find((s) => s.id === data.setId);
+  const preview = photoUrl || data.profile_image;
   return (
     <div className="flex flex-col gap-5">
       <div>
@@ -264,6 +345,22 @@ function Step4({ data }: { data: Partial<FormData> }) {
           Check everything is correct before submitting.
         </p>
       </div>
+      {preview && (
+        <div className="flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={preview}
+            alt="Profile preview"
+            className="w-14 h-14 rounded-full object-cover"
+          />
+          <div>
+            <p className="text-sm font-medium text-[var(--text-heading)]">Profile photo</p>
+            <p className="text-xs text-[var(--text-muted)]">
+              This will appear on your member ID card.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="flex flex-col gap-0 text-sm">
         {[
           { label: "Email",       value: data.email },
@@ -307,6 +404,8 @@ export default function RegisterPage() {
   const [step, setStep]     = useState(1);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState("");
+  const [photoError, setPhotoError] = useState("");
 
   const {
     register,
@@ -323,14 +422,18 @@ export default function RegisterPage() {
     3: ["setId"],
   };
 
-  async function handleNext() {
+  const handleNext = async () => {
+    if (step === 2 && !photoUrl) {
+      setPhotoError("Please upload a profile photo");
+      return;
+    }
     const fields = stepFields[step];
     if (fields) {
       const valid = await trigger(fields);
       if (!valid) return;
     }
     setStep((s) => Math.min(s + 1, 4));
-  }
+  };
 
   async function onSubmit(data: FormData) {
     setLoading(true);
@@ -346,13 +449,21 @@ export default function RegisterPage() {
         birth_day:     data.birth_day || undefined,
         birth_month:   data.birth_month || undefined,
         bio:           data.bio    || undefined,
+        profile_image: photoUrl || undefined,
       });
       const set = MOCK_SETS.find((s) => s.id === data.setId);
       saveCurrentUser({
-        full_name: data.full_name,
-        email:     data.email,
-        setId:     data.setId,
-        set_name:  set?.set_name,
+        full_name:     data.full_name,
+        email:         data.email,
+        setId:         data.setId,
+        set_name:      set?.set_name,
+        gender:        data.gender,
+        phone:         data.phone,
+        address:       data.address,
+        birth_day:     data.birth_day,
+        birth_month:   data.birth_month,
+        bio:           data.bio,
+        profile_image: photoUrl || undefined,
       });
       setSuccess(true);
     } finally {
@@ -449,9 +560,20 @@ export default function RegisterPage() {
         <div className="card w-full max-w-md p-6">
           <form onSubmit={handleSubmit(onSubmit)} noValidate>
             {step === 1 && <Step1 register={register} errors={errors} />}
-            {step === 2 && <Step2 register={register} errors={errors} />}
+            {step === 2 && (
+              <Step2
+                register={register}
+                errors={errors}
+                onPhoto={(url) => {
+                  setPhotoUrl(url);
+                  setPhotoError("");
+                }}
+                photoUrl={photoUrl}
+                photoError={photoError}
+              />
+            )}
             {step === 3 && <Step3 register={register} errors={errors} />}
-            {step === 4 && <Step4 data={getValues()} />}
+            {step === 4 && <Step4 data={getValues()} photoUrl={photoUrl} />}
 
             <div className="flex justify-between mt-7 gap-3">
               {step > 1 ? (

@@ -19,6 +19,7 @@ async function listCycles(req, res) {
         id: c.id,
         title: c.title,
         cycleType: c.cycleType,
+        feeType: c.feeType, // 'dues' | 'web'
         startDate: c.startDate,
         endDate: c.endDate,
         amount: c.amount,
@@ -37,7 +38,7 @@ async function listCycles(req, res) {
 // POST /api/dues/cycles — admin
 async function createCycle(req, res) {
   try {
-    const { title, cycleType, startDate, endDate, amount, dueDate } = req.body;
+    const { title, cycleType, feeType, startDate, endDate, amount, dueDate } = req.body;
     if (!title || !cycleType || !startDate || !endDate || !amount || !dueDate) {
       return res.status(400).json({ error: 'title, cycleType, startDate, endDate, amount, dueDate required' });
     }
@@ -46,6 +47,7 @@ async function createCycle(req, res) {
       data: {
         title,
         cycleType,
+        feeType: feeType === 'web' ? 'web' : 'dues',
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         amount,
@@ -57,6 +59,7 @@ async function createCycle(req, res) {
       id: cycle.id,
       title: cycle.title,
       cycleType: cycle.cycleType,
+      feeType: cycle.feeType,
       startDate: cycle.startDate,
       endDate: cycle.endDate,
       amount: cycle.amount,
@@ -72,10 +75,11 @@ async function createCycle(req, res) {
 // PUT /api/dues/cycles/:id — admin
 async function updateCycle(req, res) {
   try {
-    const { title, cycleType, startDate, endDate, amount, dueDate, isActive } = req.body;
+    const { title, cycleType, feeType, startDate, endDate, amount, dueDate, isActive } = req.body;
     const data = {};
     if (title !== undefined) data.title = title;
     if (cycleType !== undefined) data.cycleType = cycleType;
+    if (feeType !== undefined) data.feeType = feeType === 'web' ? 'web' : 'dues';
     if (startDate !== undefined) data.startDate = new Date(startDate);
     if (endDate !== undefined) data.endDate = new Date(endDate);
     if (amount !== undefined) data.amount = amount;
@@ -91,6 +95,7 @@ async function updateCycle(req, res) {
       id: cycle.id,
       title: cycle.title,
       cycleType: cycle.cycleType,
+      feeType: cycle.feeType,
       amount: cycle.amount,
       startDate: cycle.startDate,
       endDate: cycle.endDate,

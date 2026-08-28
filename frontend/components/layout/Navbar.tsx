@@ -48,6 +48,9 @@ export default function Navbar({ variant = "public", userName }: NavbarProps) {
           <Link href="/sets" className="hover:text-[var(--primary)] transition-colors">
             Our Sets
           </Link>
+          <Link href="/exco" className="hover:text-[var(--primary)] transition-colors">
+            Our Exco
+          </Link>
           <Link href="/about" className="hover:text-[var(--primary)] transition-colors">
             About
           </Link>
@@ -87,6 +90,9 @@ export default function Navbar({ variant = "public", userName }: NavbarProps) {
         <div className="md:hidden bg-white border-t border-[var(--border-subtle)] px-4 py-4 flex flex-col gap-3 text-sm font-medium">
           <Link href="/sets" className="py-2 hover:text-[var(--primary)]" onClick={() => setOpen(false)}>
             Our Sets
+          </Link>
+          <Link href="/exco" className="py-2 hover:text-[var(--primary)]" onClick={() => setOpen(false)}>
+            Our Exco
           </Link>
           <Link href="/about" className="py-2 hover:text-[var(--primary)]" onClick={() => setOpen(false)}>
             About

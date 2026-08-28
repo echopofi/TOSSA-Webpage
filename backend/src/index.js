@@ -15,6 +15,9 @@ const paymentRoutes = require('./routes/payments');
 const duesRoutes = require('./routes/dues');
 const webhookRoutes = require('./routes/webhooks');
 const adminRoutes = require('./routes/admin');
+const electionRoutes = require('./routes/elections');
+const excoRoutes = require('./routes/exco');
+const uploadRoutes = require('./routes/upload');
 
 const app = express();
 
@@ -41,6 +44,9 @@ app.use('/api/announcements', announcementRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/dues', duesRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/elections', electionRoutes);
+app.use('/api/exco', excoRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

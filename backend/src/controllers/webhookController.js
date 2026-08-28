@@ -190,6 +190,65 @@ async function handlePaystackWebhook(req, res) {
 
         await sendPaymentEmail(memberId, data.amount, paystackRef, 'dues');
       }
+    } else if (type === 'election') {
+      const applicationId = metadata.election_application_id;
+      if (!applicationId) {
+        return res.status(200).json({ message: 'No election_application_id, ignored' });
+      }
+
+      const application = await prisma.electionApplication.findUnique({
+        where: { id: applicationId },
+        include: { position: true },
+      });
+      if (!application) {
+        return res.status(200).json({ message: 'Application not found' });
+      }
+
+      if (application.status === 'submitted') {
+        return res.status(200).json({ message: 'Already processed' });
+      }
+
+      // Amount must come from the position fee — never trust a client amount
+      if (data.amount !== application.position.feeAmount * 100) {
+        console.error(`Election webhook amount mismatch: expected ${application.position.feeAmount * 100}, got ${data.amount}`);
+        await prisma.electionApplication.update({
+          where: { id: application.id },
+          data: { status: 'rejected' },
+        });
+        if (!existingLedger) {
+          await prisma.paymentTransaction.create({
+            data: {
+              electionApplicationId: application.id,
+              amount: data.amount,
+              status: 'failed',
+              channel: 'paystack',
+              reference: paystackRef,
+              metadata: data,
+            },
+          });
+        }
+        return res.status(200).json({ message: 'Amount mismatch, recorded as failed' });
+      }
+
+      await prisma.electionApplication.update({
+        where: { id: application.id },
+        data: { status: 'submitted' },
+      });
+
+      if (!existingLedger) {
+        await prisma.paymentTransaction.create({
+          data: {
+            electionApplicationId: application.id,
+            amount: data.amount,
+            status: 'success',
+            channel: 'paystack',
+            reference: paystackRef,
+            metadata: data,
+          },
+        });
+      }
+
+      await sendPaymentEmail(memberId, data.amount, paystackRef, 'election');
     }
 
     res.status(200).json({ message: 'Processed' });

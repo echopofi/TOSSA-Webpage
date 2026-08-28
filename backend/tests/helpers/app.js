@@ -26,6 +26,9 @@ function createTestApp() {
   const paymentRoutes = require('../../src/routes/payments');
   const duesRoutes = require('../../src/routes/dues');
   const adminRoutes = require('../../src/routes/admin');
+  const electionRoutes = require('../../src/routes/elections');
+  const excoRoutes = require('../../src/routes/exco');
+  const uploadRoutes = require('../../src/routes/upload');
 
   app.use('/api/auth', authRoutes);
   app.use('/api/members', memberRoutes);
@@ -33,6 +36,9 @@ function createTestApp() {
   app.use('/api/payments', paymentRoutes);
   app.use('/api/dues', duesRoutes);
   app.use('/api/admin', adminRoutes);
+  app.use('/api/elections', electionRoutes);
+  app.use('/api/exco', excoRoutes);
+  app.use('/api/upload', uploadRoutes);
 
   app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 

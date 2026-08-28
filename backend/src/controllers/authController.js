@@ -27,7 +27,7 @@ function generateRefreshToken(user) {
 
 async function register(req, res) {
   try {
-    const { email, password, fullName, phone, setId, matricNumber } = req.body;
+    const { email, password, fullName, phone, setId, matricNumber, gender, address, bio, profileImage } = req.body;
 
     if (!email || !password || !fullName || !setId) {
       return res.status(400).json({ error: 'email, password, fullName, and setId are required' });
@@ -62,6 +62,10 @@ async function register(req, res) {
         userId: user.id,
         matricNumber: matricNumber || null,
         phone: phone || null,
+        gender: gender || null,
+        address: address || null,
+        bio: bio || null,
+        profileImage: profileImage || null,
       },
     });
 

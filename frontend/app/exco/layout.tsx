@@ -1,7 +1,7 @@
 import Sidebar from "@/components/layout/Sidebar";
 import Navbar from "@/components/layout/Navbar";
 
-export default function PaymentsLayout({
+export default function ExcoLayout({
   children,
 }: {
   children: React.ReactNode;

@@ -14,8 +14,17 @@ module.exports = {
     publicKey: process.env.PAYSTACK_PUBLIC_KEY,
     webhookSecret: process.env.PAYSTACK_WEBHOOK_SECRET,
   },
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    apiKey: process.env.CLOUDINARY_API_KEY,
+    apiSecret: process.env.CLOUDINARY_API_SECRET,
+  },
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
-  registrationFeeAmount: parseInt(process.env.REGISTRATION_FEE_AMOUNT, 10) || 5000,
+  // Confirmed fee values (replacing placeholders):
+  //   registration fee ₦1,000 one-time
+  //   annual dues ₦2,000/yr and web-fee ₦1,000/yr are stored per-cycle on
+  //   dues_cycles (fee_type 'dues' | 'web'); amounts are always read from the DB.
+  registrationFeeAmount: parseInt(process.env.REGISTRATION_FEE_AMOUNT, 10) || 1000,
   email: {
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT, 10) || 587,

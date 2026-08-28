@@ -44,6 +44,11 @@ import type {
   MemberMilestone,
   PaginatedResponse,
   ApiSuccess,
+  ElectionPosition,
+  ElectionApplication,
+  ExcoOfficer,
+  CloudinarySignature,
+  AssignOfficerPayload,
 } from "@/lib/types";
 
 import {
@@ -58,6 +63,9 @@ import {
   MOCK_ANNOUNCEMENTS,
   MOCK_ADMIN_DASHBOARD,
   MOCK_MILESTONES,
+  MOCK_ELECTION_POSITIONS,
+  MOCK_ELECTION_APPLICATIONS,
+  MOCK_EXCO_OFFICERS,
 } from "@/lib/mockData";
 
 import { getCurrentUser } from "@/lib/session";
@@ -110,6 +118,11 @@ export async function apiMe(): Promise<ApiSuccess<AuthMeResponse>> {
       user_id: user.id,
       full_name: session.full_name,
       email: session.email,
+      gender: session.gender,
+      phone: session.phone,
+      address: session.address,
+      bio: session.bio,
+      profile_image: session.profile_image,
       is_active: true,
       joined_at: new Date().toISOString(),
       set_id: session.setId,
@@ -291,7 +304,7 @@ export async function apiVerifyRegistration(
     id:                  "pay_001",
     member_id:           "mem_001",
     payment_type:        "registration_fee",
-    amount:              10000, // placeholder
+    amount:              1000, // confirmed one-time fee ₦1,000
     paystack_reference:  reference,
     status:              "success",
     paid_at:             new Date().toISOString(),
@@ -356,6 +369,54 @@ export async function apiGetDuesSummary(): Promise<ApiSuccess<DuesSummary>> {
   return ok(MOCK_DUES_SUMMARY);
 }
 
+// ─── Elections (member) ───────────────────────────────────────────────────────
+
+/** GET /api/elections/positions — public, open positions only */
+export async function apiGetElectionPositions(): Promise<ApiSuccess<ElectionPosition[]>> {
+  await delay();
+  return ok(MOCK_ELECTION_POSITIONS.filter((p) => p.is_open));
+}
+
+/** GET /api/elections/my-applications — member's own applications */
+export async function apiMyElectionApplications(): Promise<ApiSuccess<ElectionApplication[]>> {
+  await delay();
+  return ok(MOCK_ELECTION_APPLICATIONS);
+}
+
+/** POST /api/elections/apply — member applies to a position */
+export async function apiApplyForElection(
+  positionId: string,
+  manifesto: string,
+  callbackUrl: string
+): Promise<ApiSuccess<PaystackInitResponse>> {
+  await delay(800);
+  return ok({
+    authorization_url: `https://checkout.paystack.com/mock_election_${positionId}`,
+    reference: `ELE_MOCK_${Date.now()}`,
+  });
+}
+
+/** GET /api/elections/verify/:reference — one-shot check after Paystack redirect */
+export async function apiVerifyElectionApplication(
+  reference: string
+): Promise<ApiSuccess<ElectionApplication>> {
+  await delay(600);
+  return ok({
+    id: `elec_app_${reference}`,
+    position_id: "elec_pos_president",
+    position: {
+      id: "elec_pos_president",
+      title: "President",
+      fee_amount: 40000,
+      election_year: "2026/2027",
+    },
+    paystack_reference: reference,
+    status: "submitted",
+    applied_at: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+  });
+}
+
 // ─── Announcements ────────────────────────────────────────────────────────────
 
 /** GET /api/announcements — members see global + their set's; admins see all */
@@ -387,7 +448,99 @@ export async function apiSendAnnouncement(
   return ok(ann);
 }
 
-// ─── Admin ────────────────────────────────────────────────────────────────────
+// ─── Exco ─────────────────────────────────────────────────────────────────────
+
+/** GET /api/exco — public, current officers only */
+export async function apiGetExcoOfficers(): Promise<ApiSuccess<ExcoOfficer[]>> {
+  await delay();
+  return ok(MOCK_EXCO_OFFICERS);
+}
+
+// ─── Cloudinary upload ─────────────────────────────────────────────────────────
+
+/** POST /api/upload/cloudinary-signature — signed upload params, no secrets shipped */
+export async function apiGetCloudinarySignature(
+  folder = "members"
+): Promise<ApiSuccess<CloudinarySignature>> {
+  await delay(150);
+  return ok({
+    signature: `mock_sig_${Date.now()}`,
+    timestamp: Math.round(Date.now() / 1000),
+    apiKey: "mock_cloudinary_key",
+    cloudName: "tssosa",
+    folder,
+  });
+}
+
+// ─── Admin (elections + exco) ─────────────────────────────────────────────────
+
+/** GET /api/admin/elections/applications */
+export async function apiAdminListElectionApplications(
+  params?: { positionId?: string; status?: string }
+): Promise<ApiSuccess<ElectionApplication[]>> {
+  await delay();
+  return ok(MOCK_ELECTION_APPLICATIONS);
+}
+
+/** PATCH /api/admin/elections/applications/:id */
+export async function apiAdminUpdateElectionApplication(
+  id: string,
+  status: ElectionApplication["status"]
+): Promise<ApiSuccess<ElectionApplication>> {
+  await delay(400);
+  const app = MOCK_ELECTION_APPLICATIONS.find((a) => a.id === id);
+  return ok({ ...(app ?? ({} as ElectionApplication)), id, status });
+}
+
+/** POST /api/admin/elections/positions */
+export async function apiAdminCreateElectionPosition(
+  payload: { title: string; feeAmount: number; election_year: string }
+): Promise<ApiSuccess<ElectionPosition>> {
+  await delay(400);
+  return ok({
+    id: `elec_pos_${Date.now()}`,
+    title: payload.title,
+    fee_amount: payload.feeAmount,
+    election_year: payload.election_year,
+    is_open: true,
+    created_at: new Date().toISOString(),
+  });
+}
+
+/** POST /api/admin/exco */
+export async function apiAdminAssignOfficer(
+  payload: AssignOfficerPayload
+): Promise<ApiSuccess<ExcoOfficer>> {
+  await delay(400);
+  return ok({
+    id: `exco_${Date.now()}`,
+    member_id: payload.memberId,
+    position_id: payload.positionId,
+    position: payload.positionId,
+    term_label: payload.termLabel,
+    is_current: true,
+    started_at: new Date().toISOString(),
+    member: { id: payload.memberId, full_name: "Assigned Member" },
+  });
+}
+
+/** PATCH /api/admin/exco/:id — end a term */
+export async function apiAdminEndOfficerTerm(
+  id: string
+): Promise<ApiSuccess<ExcoOfficer>> {
+  await delay(300);
+  return ok({
+    id,
+    member_id: "",
+    position_id: "",
+    position: "",
+    term_label: "",
+    is_current: false,
+    started_at: new Date().toISOString(),
+    ended_at: new Date().toISOString(),
+    member: { id: "", full_name: "" },
+  });
+}
 
 /** GET /api/admin/dashboard — was /api/admin/stats in v1 */
 export async function apiGetAdminDashboard(): Promise<ApiSuccess<AdminDashboard>> {

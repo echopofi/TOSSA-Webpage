@@ -11,32 +11,39 @@ import {
   ArrowRight,
   TrendingUp,
   Calendar,
+  User,
+  Vote,
 } from "lucide-react";
 import {
   apiMe,
   apiGetDuesSummary,
   apiGetAnnouncements,
+  apiMyElectionApplications,
 } from "@/lib/api";
-import type { Member, DuesSummary, Announcement } from "@/lib/types";
+import type { Member, DuesSummary, Announcement, ElectionApplication } from "@/lib/types";
 import { formatNaira, formatDate, initials } from "@/lib/utils";
+import MemberIdCard from "@/components/id/MemberIdCard";
 
 export default function DashboardPage() {
   const [member, setMember]               = useState<Member | null>(null);
   const [dues, setDues]                   = useState<DuesSummary | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [applications, setApplications]   = useState<ElectionApplication[]>([]);
   const [loading, setLoading]             = useState(true);
 
   useEffect(() => {
     (async () => {
       // apiMe returns { user, member, set } — richer than a plain member fetch
-      const [meRes, dRes, aRes] = await Promise.all([
+      const [meRes, dRes, aRes, eRes] = await Promise.all([
         apiMe(),
         apiGetDuesSummary(),
         apiGetAnnouncements(),
+        apiMyElectionApplications(),
       ]);
       setMember(meRes.data.member);
       setDues(dRes.data);
       setAnnouncements(aRes.data.slice(0, 3));
+      setApplications(eRes.data);
       setLoading(false);
     })();
   }, []);
@@ -71,6 +78,76 @@ export default function DashboardPage() {
           />
         </div>
       </div>
+
+      {/* ── Member ID card + Elections ─────────────────────────────────────── */}
+      {member && (
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <div className="lg:col-span-2 flex justify-center lg:justify-start">
+            <MemberIdCard member={member} />
+          </div>
+
+          {/* My election applications */}
+          <div className="lg:col-span-3">
+            <Card padding="none" className="h-full flex flex-col">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-subtle)]">
+                <h2 className="font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)] text-base">
+                  My Election Applications
+                </h2>
+                <Link
+                  href="/elections"
+                  className="text-sm text-[var(--primary)] font-medium hover:underline flex items-center gap-1"
+                >
+                  Elections <ArrowRight size={14} />
+                </Link>
+              </div>
+              <div className="flex-1 divide-y divide-[var(--border-subtle)]">
+                {applications.length === 0 ? (
+                  <div className="px-5 py-8 text-center flex flex-col items-center gap-3">
+                    <User size={28} className="text-[var(--text-muted)]" />
+                    <div>
+                      <p className="text-sm font-medium text-[var(--text-heading)]">
+                        No applications yet
+                      </p>
+                      <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                        Contest for a position in this session's elections.
+                      </p>
+                    </div>
+                    <Link
+                      href="/elections"
+                      className="text-xs text-[var(--primary)] font-semibold hover:underline"
+                    >
+                      View open positions →
+                    </Link>
+                  </div>
+                ) : (
+                  applications.map((a) => (
+                    <div key={a.id} className="px-5 py-4 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-[var(--text-heading)]">
+                          {a.position.title}
+                        </p>
+                        <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                          {a.position.election_year} · {formatNaira(a.position.fee_amount)} fee
+                        </p>
+                      </div>
+                      <StatusPill
+                        status={
+                          a.status === "approved" || a.status === "submitted"
+                            ? "paid"
+                            : a.status === "rejected"
+                            ? "overdue"
+                            : "pending"
+                        }
+                        label={a.status.replace(/_/g, " ")}
+                      />
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
 
       {/* ── Dues summary cards ─────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -200,9 +277,11 @@ export default function DashboardPage() {
           </div>
           <div className="p-2 flex flex-col gap-1">
             {[
-              { href: member?.set_id ? `/sets/${member.set_id}` : "/sets", icon: Users,    label: "Visit My Set Page"    },
-              { href: "/payments",                                          icon: CreditCard, label: "Pay / View Dues"    },
-              { href: member?.id ? `/members/${member.id}` : "/profile",   icon: Users,    label: "View My Profile"      },
+              { href: member?.set_id ? `/sets/${member.set_id}` : "/sets", icon: Users,    label: "Visit My Set Page"           },
+              { href: "/payments",                                          icon: CreditCard, label: "Pay / View Dues"           },
+              { href: "/elections",                                         icon: Vote,       label: "Elections & Contest Forms" },
+              { href: "/exco",                                              icon: Users,      label: "Our Executives (Exco)"      },
+              { href: member?.id ? `/members/${member.id}` : "/profile",   icon: User,       label: "View My Profile"            },
             ].map(({ href, icon: Icon, label }) => (
               <Link
                 key={href}

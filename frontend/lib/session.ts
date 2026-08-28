@@ -11,6 +11,13 @@ export interface SessionUser {
   email: string;
   setId?: string;
   set_name?: string;
+  gender?: string;
+  phone?: string;
+  address?: string;
+  birth_day?: string;
+  birth_month?: string;
+  bio?: string;
+  profile_image?: string;
 }
 
 const KEY = "tssosa_current_user";

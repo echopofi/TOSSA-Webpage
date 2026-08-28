@@ -1,5 +1,5 @@
 const express = require('express');
-const { listMembers, searchMembers, getMember, updateMember, listSets, createSet, updateSet } = require('../controllers/memberController');
+const { listMembers, searchMembers, getMember, updateOwnPhoto, updateMember, listSets, createSet, updateSet } = require('../controllers/memberController');
 const { listMilestones, createMilestone, deleteMilestone } = require('../controllers/milestoneController');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 
@@ -12,6 +12,7 @@ router.put('/sets/:id', authenticateToken, requireAdmin, updateSet);
 
 // Members — authenticated
 router.get('/search', authenticateToken, requireAdmin, searchMembers);
+router.put('/me/photo', authenticateToken, updateOwnPhoto);
 router.get('/', authenticateToken, listMembers);
 router.get('/:id', authenticateToken, getMember);
 router.patch('/:id', authenticateToken, requireAdmin, updateMember);

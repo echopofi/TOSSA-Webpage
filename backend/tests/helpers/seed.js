@@ -12,6 +12,9 @@ async function seedTestData() {
   await prisma.memberMilestone.deleteMany();
   await prisma.announcement.deleteMany();
   await prisma.setMember.deleteMany();
+  await prisma.electionApplication.deleteMany();
+  await prisma.excoOfficer.deleteMany();
+  await prisma.electionPosition.deleteMany();
   await prisma.member.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.graduationSet.deleteMany();
@@ -67,15 +70,39 @@ async function seedTestData() {
     data: { memberId: memberProfile.id, setId: set2021.id },
   });
 
-  // Create a dues cycle
+  // Create a dues cycle (annual dues ₦2,000 — confirmed fee)
   const cycle = await prisma.duesCycle.create({
     data: {
       title: 'Annual Dues 2025',
       cycleType: 'year',
-      amount: 5000,
+      feeType: 'dues',
+      amount: 2000,
       startDate: new Date('2025-01-01'),
       endDate: new Date('2025-12-31'),
       dueDate: new Date('2025-06-30'),
+    },
+  });
+
+  // Create a web-fee cycle (₦1,000 — separate recurring charge)
+  const webFeeCycle = await prisma.duesCycle.create({
+    data: {
+      title: 'Annual Web-fee 2025',
+      cycleType: 'year',
+      feeType: 'web',
+      amount: 1000,
+      startDate: new Date('2025-01-01'),
+      endDate: new Date('2025-12-31'),
+      dueDate: new Date('2025-06-30'),
+    },
+  });
+
+  // Create an open election position
+  const electionPosition = await prisma.electionPosition.create({
+    data: {
+      title: 'President',
+      feeAmount: 40000,
+      electionYear: '2026/2027',
+      isOpen: true,
     },
   });
 
@@ -98,6 +125,8 @@ async function seedTestData() {
     adminMember,
     memberProfile,
     cycle,
+    webFeeCycle,
+    electionPosition,
     announcement,
   };
 }

@@ -35,6 +35,8 @@ import type {
   BroadcastPayload,
 } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+import ElectionReviewPanel from "@/components/admin/ElectionReviewPanel";
+import ExcoAssignmentPanel from "@/components/admin/ExcoAssignmentPanel";
 
 // ─── Form shape ───────────────────────────────────────────────────────────────
 
@@ -494,6 +496,17 @@ export default function AdminPage() {
               )}
             </div>
           </Card>
+        </div>
+      </div>
+
+      {/* ── Elections & Exco management ───────────────────────────────────── */}
+      <div>
+        <h2 className="text-lg font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)] mb-4">
+          Elections & Exco
+        </h2>
+        <div className="flex flex-col gap-6">
+          <ElectionReviewPanel />
+          <ExcoAssignmentPanel />
         </div>
       </div>
     </div>
