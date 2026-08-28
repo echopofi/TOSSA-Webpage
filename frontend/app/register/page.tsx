@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -419,6 +419,7 @@ function RegisterContent() {
   const [photoError, setPhotoError] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [sets, setSets] = useState<GraduationSet[]>([]);
+  const submittingRef = useRef(false);
 
   // Real graduating sets from the backend; fall back to mocks if it's unreachable.
   useEffect(() => {
@@ -473,14 +474,32 @@ function RegisterContent() {
   };
 
   async function onSubmit(data: FormData) {
+    // Guard against double submission (e.g. double-click before the button re-renders).
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
     setSubmitError("");
     try {
+      // The set dropdown falls back to MOCK_SETS when the backend is unreachable
+      // at page load. Resolve a mock ("set_xxxx") id to a real backend UUID here
+      // so we never POST a fake setId.
+      let setId = data.setId;
+      if (setId.startsWith("set_")) {
+        const fallbackName = MOCK_SETS.find((s) => s.id === setId)?.set_name;
+        try {
+          const fresh = await apiGetSets();
+          const real = fresh.data.find((s) => s.set_name === fallbackName) || fresh.data[0];
+          if (real) setId = real.id;
+        } catch {
+          /* still can't reach the server — the POST below will surface it clearly */
+        }
+      }
+
       await apiRegister({
         full_name:     data.full_name,
         email:         data.email,
         password:      data.password,
-        setId:         data.setId,         // spec: camelCase setId at signup
+        setId:         setId,             // spec: camelCase setId at signup
         gender:        data.gender || undefined,
         phone:         data.phone  || undefined,
         address:       data.address || undefined,
@@ -492,13 +511,16 @@ function RegisterContent() {
       // No session here: the account is unverified until an admin approves it.
       setSuccess(true);
     } catch (err) {
-      setSubmitError(
+      const message =
         err instanceof ApiRequestError
-          ? err.message
-          : "Unable to reach the server. Please try again."
-      );
+          ? err.status === 409
+            ? "That email is already registered. Go to the login page and sign in instead."
+            : err.message
+          : "Unable to reach the server. Please try again.";
+      setSubmitError(message);
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   }
 
@@ -616,6 +638,13 @@ function RegisterContent() {
             {submitError && (
               <div className="mt-5 bg-[var(--danger-bg)] text-[var(--danger)] text-sm rounded-lg px-4 py-3">
                 {submitError}
+              </div>
+            )}
+
+            {loading && (
+              <div className="mt-5 flex items-center justify-center gap-2 text-sm text-[var(--text-muted)]">
+                <Loader2 size={15} className="animate-spin" />
+                Please wait… submitting your application.
               </div>
             )}
 

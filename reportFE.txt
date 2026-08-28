@@ -201,3 +201,11 @@ home/payments/sets/login, unused vars in api.ts/register — untouched).
   phone 30, password 128). Shared rules in lib/validation.ts, mirrored by the
   backend (Section 10 reportBE). UI verified: invalid email / mismatched
   passwords show inline messages and block submission on both forms.
+- Registration submit hardening: button disabled + inline "Please wait…" message
+  while the request is in flight (was: only the button spinner); ref guard blocks
+  double submission; apiRegister now has a 20s AbortController timeout with a
+  clear timeout message. If the set dropdown fell back to MOCK_SETS because the
+  backend was briefly unreachable at load, the submit re-fetches real sets and
+  maps the chosen mock id (set_xxxx) to its real UUID by name — fixes "Invalid
+  graduation set" from a fake setId. 409 now shows "That email is already
+  registered. Go to the login page and sign in instead."

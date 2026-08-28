@@ -192,6 +192,8 @@ export async function apiRegister(
   }
 
   let res: Response;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20000);
   try {
     res = await fetch(`${apiUrl}/api/auth/register`, {
       method: "POST",
@@ -208,9 +210,17 @@ export async function apiRegister(
         bio: payload.bio,
         profileImage: payload.profile_image,
       }),
+      signal: controller.signal,
     });
   } catch {
-    throw new ApiRequestError(0, "Unable to reach the server. Please try again.");
+    throw new ApiRequestError(
+      0,
+      controller.signal.aborted
+        ? "The server took too long to respond. Please try again."
+        : "Unable to reach the server. Please try again."
+    );
+  } finally {
+    clearTimeout(timer);
   }
 
   if (!res.ok) {
