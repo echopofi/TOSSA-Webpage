@@ -604,17 +604,42 @@ export async function apiGetExcoOfficers(): Promise<ApiSuccess<ExcoOfficer[]>> {
 
 // ─── Cloudinary upload ─────────────────────────────────────────────────────────
 
-/** POST /api/upload/cloudinary-signature — signed upload params, no secrets shipped */
+/** GET /api/upload/cloudinary-signature — signed upload params, no secrets shipped */
 export async function apiGetCloudinarySignature(
   folder = "members"
 ): Promise<ApiSuccess<CloudinarySignature>> {
-  await delay(150);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) {
+    await delay(150);
+    return ok({
+      signature: `mock_sig_${Date.now()}`,
+      timestamp: Math.round(Date.now() / 1000),
+      apiKey: "mock_cloudinary_key",
+      cloudName: "tssosa",
+      folder,
+    });
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${apiUrl}/api/upload/cloudinary-signature?folder=${encodeURIComponent(folder)}`);
+  } catch {
+    throw new ApiRequestError(0, "Unable to reach the server. Please try again.");
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiRequestError(res.status, body?.error ?? "Signature request failed");
+  }
+  const json = (await res.json()) as Partial<CloudinarySignature>;
+  if (!json.signature || !json.apiKey || !json.cloudName) {
+    throw new ApiRequestError(0, "Invalid signature response");
+  }
   return ok({
-    signature: `mock_sig_${Date.now()}`,
-    timestamp: Math.round(Date.now() / 1000),
-    apiKey: "mock_cloudinary_key",
-    cloudName: "tssosa",
-    folder,
+    signature: json.signature,
+    timestamp: json.timestamp ?? Math.round(Date.now() / 1000),
+    apiKey: json.apiKey,
+    cloudName: json.cloudName,
+    folder: json.folder ?? folder,
   });
 }
 

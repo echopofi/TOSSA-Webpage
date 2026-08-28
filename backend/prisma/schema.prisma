@@ -45,7 +45,7 @@ model Member {
   phone         String?  @db.VarChar(30)
   address       String?  @db.Text()
   bio           String?  @db.Text()
-  profileImage  String?  @map("profile_image") @db.VarChar(500)
+  profileImage  String?  @map("profile_image") @db.Text()
   isActive      Boolean  @default(true) @map("is_active")
   joinedAt      DateTime @default(now()) @map("joined_at")
 

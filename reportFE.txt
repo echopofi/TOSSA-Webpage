@@ -175,3 +175,21 @@ home/payments/sets/login, unused vars in api.ts/register — untouched).
   backend yet), so new signups can't sign in through the UI until register is
   real AND an admin verifies them. Real Cloudinary upload also still blocked on
   CLOUDINARY_CLOUD_NAME (see reportBE.txt).
+
+## Section 9 — Registration wired to the real backend (verified end-to-end)
+- apiRegister POSTs /api/auth/register; ApiRequestError surfaces backend
+  messages (409 "Email already registered", 400 validation, server errors).
+- Register page: graduation-set dropdown loads REAL sets from /api/sets (UUIDs;
+  falls back to mocks if backend unreachable); Step4 review uses real sets.
+- No auto-session on signup — account is unverified until an admin approves it
+  (login shows the inline "not verified yet" message).
+- apiGetCloudinarySignature now hits the real signature endpoint (was mock, so
+  the "real" upload path was using a fake api key). Photo upload falls back to a
+  local data URL when the signature yields an unusable cloud name (until
+  CLOUDINARY_CLOUD_NAME is real) — console.warn'd.
+- E2E verified (headless Chrome): wizard walk-through with a real backend set ->
+  success screen, no session; unverified login -> inline 403 message, stays on
+  /login; admin POST /api/admin/members/:id/verify -> 200; login -> /dashboard
+  greeting "Chioma". Zero console exceptions. `next build` green.
+- DEMO LOGIN for testing: member@test.com / member12345 (member), admin@test.com
+  / admin12345 (admin).

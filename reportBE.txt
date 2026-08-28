@@ -85,3 +85,17 @@ Status: COMPLETE — all 93 tests passing (10 suites).
   in /api/auth/me and /api/members/*; the frontend `Member` type uses
   `profile_image`. The mock API layer normalises this today; real fetches will
   need the same mapping or the ID card falls back to initials.
+## Section 9 — Registration + verification wiring (real flow)
+- POST /api/auth/register already real; frontend now calls it (fullName, email,
+  password, setId, gender, phone, address, bio, profileImage). New accounts are
+  UNVERIFIED (users.is_verified=false default) and denied by /api/auth/login with
+  403 until approved.
+- NEW POST /api/admin/members/:id/verify (requireAdmin): flips users.is_verified
+  + members.is_active. Takes member id (register response / DB), not user id.
+- `members.profile_image` widened VARCHAR(500) -> TEXT (schema.prisma + `prisma
+  db push`). The frontend photo fallback stores a data URL (~1KB+ for tiny
+  images, much larger for real photos); 500 was too small (P2000 on register).
+- ADMIN LOGIN: admin@test.com / admin12345 (verified, seeded). Member demo:
+  member@test.com / member12345.
+- To verify a new member: login as admin -> POST /api/admin/members/:memberId/verify
+  with Bearer token. Backend tests: 93/93 after the change.
