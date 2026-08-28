@@ -95,14 +95,16 @@ home/payments/sets/login, unused vars in api.ts/register — untouched).
   /api/upload/cloudinary-signature → unsigned upload to Cloudinary → `secure_url`.
 - **Verified live against the running backend:**
   - signature endpoint returns real signed params (no secret shipped) ✅
-  - upload request reaches Cloudinary; **blocked only by the invalid cloud name**
-    (`Invalid cloud_name root` — see reportBE.txt) — the request shape is correct.
+  - **upload works end-to-end** with the real cloud name (`q52frkzl` in
+    backend/.env): unsigned upload → HTTP 200 → real `secure_url`
+    (https://res.cloudinary.com/q52frkzl/...), stored in `members.profile_image` ✅
   - DB persistence confirmed via a throwaway registration: `profileImage` landed
     in `members.profile_image` (queried, user deleted) ✅
-- **Behavior while the cloud name is wrong:** registration photo upload shows a
-  clear error ("Invalid cloud_name root") — it FAILS LOUDLY, it does not silently
-  fall back to the canvas mock. Fix = set the real `CLOUDINARY_CLOUD_NAME` in
-  backend/.env + restart the backend (see reportBE.txt).
+- **Photo upload behavior:** real Cloudinary path is now used; if the signature
+  or upload ever fails (e.g. bad cloud name), the client falls back to a resized
+  local data URL + `console.warn` ("Cloudinary upload unavailable …") so
+  registration still completes. Previously this was "root" blocked / failed
+  loudly; the fallback is intentional.
 - **Integration heads-up:** backend returns `profileImage` (camelCase); frontend
   Member uses `profile_image`. The mock layer maps today; real fetches need the
   same mapping or the ID card shows initials.
@@ -151,8 +153,8 @@ home/payments/sets/login, unused vars in api.ts/register — untouched).
 ## Not done here / notes
 - Profile-edit page for changing the photo post-signup (endpoint exists;
   registration upload already covers the card requirement). Suggested as follow-up.
-- get the real `CLOUDINARY_CLOUD_NAME` into backend/.env (see reportBE.txt), then
-  the Cloudinary `secure_url` replaces the data-URL mock everywhere automatically.
+- DONE: real `CLOUDINARY_CLOUD_NAME` (`q52frkzl`) is in backend/.env and Cloudinary
+  `secure_url` now replaces the data-URL mock automatically (verified end-to-end).
 - /exco is PUBLIC (public-navbar layout, no guard).
 - Amounts everywhere remain server-sourced; mocks just mirror the confirmed values.
 ## Section 8 — Sign-in now requires a registered account (fixed flow)
@@ -171,10 +173,9 @@ home/payments/sets/login, unused vars in api.ts/register — untouched).
   /admin allowed; unregistered email & wrong password → /register?notice=
   invalid-login, session NOT created (/dashboard still guarded); no console
   exceptions. `next build` passes (14 routes).
-- NOTE: frontend registration is still the mock flow (does not write to the
-  backend yet), so new signups can't sign in through the UI until register is
-  real AND an admin verifies them. Real Cloudinary upload also still blocked on
-  CLOUDINARY_CLOUD_NAME (see reportBE.txt).
+- NOTE: registration was the mock flow at that time; signups now go through the
+  real /api/auth/register (Section 9) and still need an admin to verify before
+  they can sign in. Cloudinary upload is now unblocked (real cloud name set).
 
 ## Section 9 — Registration wired to the real backend (verified end-to-end)
 - apiRegister POSTs /api/auth/register; ApiRequestError surfaces backend
@@ -184,9 +185,11 @@ home/payments/sets/login, unused vars in api.ts/register — untouched).
 - No auto-session on signup — account is unverified until an admin approves it
   (login shows the inline "not verified yet" message).
 - apiGetCloudinarySignature now hits the real signature endpoint (was mock, so
-  the "real" upload path was using a fake api key). Photo upload falls back to a
-  local data URL when the signature yields an unusable cloud name (until
-  CLOUDINARY_CLOUD_NAME is real) — console.warn'd.
+  the "real" upload path was using a fake api key; also fixed GET->POST — the
+  route is POST, commit 4eef26a). Photo upload falls back to a local data URL
+  only if the upload genuinely fails (e.g. bad cloud name) — console.warn'd.
+- RESOLVED with real cloud `q52frkzl`: UI E2E shows real Cloudinary preview/src,
+  no fallback warn, no exceptions; DB `profile_image` stores the secure_url.
 - E2E verified (headless Chrome): wizard walk-through with a real backend set ->
   success screen, no session; unverified login -> inline 403 message, stays on
   /login; admin POST /api/admin/members/:id/verify -> 200; login -> /dashboard

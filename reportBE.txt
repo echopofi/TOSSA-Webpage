@@ -74,11 +74,12 @@ Status: COMPLETE — all 93 tests passing (10 suites).
   verified `Access-Control-Allow-Origin: http://localhost:3001` on /api/sets.
 - **`/api/upload/cloudinary-signature` verified live** — returns real signed
   params (apiKey/timestamp/signature/folder, secret never exposed).
-- **BLOCKED: Cloudinary upload fails** — `CLOUDINARY_CLOUD_NAME="root"` in
-  backend/.env is invalid; cloud returns `Invalid cloud_name root`. The unsigned
-  upload request itself is correct (it reached Cloudinary and was rejected only
-  on the cloud name). ACTION: user must put the real cloud name for this account
-  in backend/.env and restart the backend.
+- **RESOLVED: Cloudinary upload works** — the cloud name in .env was wrong
+  account-mismatched ("root"/"Root", case-insensitive, never paired with API key
+  11856…557; Cloudinary: `Invalid cloud_name root`). Real cloud name is now
+  `q52frkzl` in backend/.env (matches key+secret). Live unsigned upload returns
+  HTTP 200 with real `secure_url` (https://res.cloudinary.com/q52frkzl/...).
+  NOTE: user edit must have run `fuser -k 3000/tcp` + restart to reload .env.
 - **DB persistence verified (live):** a test registration with `profileImage`
   stored the URL in `members.profile_image` (queried, then test user deleted).
 - **Field-name note:** the API returns the photo as `profileImage` (camelCase)
