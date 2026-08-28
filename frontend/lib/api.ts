@@ -604,7 +604,7 @@ export async function apiGetExcoOfficers(): Promise<ApiSuccess<ExcoOfficer[]>> {
 
 // ─── Cloudinary upload ─────────────────────────────────────────────────────────
 
-/** GET /api/upload/cloudinary-signature — signed upload params, no secrets shipped */
+/** POST /api/upload/cloudinary-signature — signed upload params, no secrets shipped */
 export async function apiGetCloudinarySignature(
   folder = "members"
 ): Promise<ApiSuccess<CloudinarySignature>> {
@@ -622,7 +622,11 @@ export async function apiGetCloudinarySignature(
 
   let res: Response;
   try {
-    res = await fetch(`${apiUrl}/api/upload/cloudinary-signature?folder=${encodeURIComponent(folder)}`);
+    res = await fetch(`${apiUrl}/api/upload/cloudinary-signature`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folder }),
+    });
   } catch {
     throw new ApiRequestError(0, "Unable to reach the server. Please try again.");
   }
