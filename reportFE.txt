@@ -255,3 +255,33 @@ home/payments/sets/login, unused vars in api.ts/register — untouched).
   console warnings. Screenshots /tmp/opencode/dash-id.jpeg, /tmp/opencode/idcard.jpeg.
 - Backend/admin already supported the flow (PATCH /api/auth/me profileImage +
   Cloudinary signed upload), so this was entirely a frontend data-binding bug.
+
+## Pending Members panel (admin dashboard)
+- New "Pending Members" section on /admin (components/admin/PendingMembersPanel.tsx,
+  rendered by app/admin/page.tsx between the stats and the broadcast layout).
+  Table lists each pending registrant: photo avatar (or initial fallback),
+  full name, email, "Class of <set>", registration date (formatDate), with
+  Reject + Approve buttons per row and an "X awaiting approval" badge.
+- DATA: pulls from the real GET /api/admin/members/pending via authedFetch —
+  no MOCK_* fallback, no localStorage/session cache (Bug 2 lesson applied).
+  List updates instantly (row removed on success) — no manual refresh needed.
+- REJECT CONFIRMATION: destructive action opens a real modal (fixed overlay +
+  card) stating the member's full name + email, that a notice will be emailed
+  before deletion, that the registration is PERMANENTLY DELETED, and that it
+  cannot be undone — Confirm is a separate "Yes, reject & delete" danger
+  button; Cancel closes the modal and the row survives. A misclick cannot
+  delete anyone directly.
+- BUG CAUGHT BY E2E: first version read the backend's camelCase response
+  (fullName/profileImage/registeredAt) as snake_case, so names/photos/dates
+  rendered blank with "?" initials — the same class of binding bug as the ID
+  photo issue. Fixed in lib/api.ts apiAdminListPendingMembers by normalizing
+  to {full_name, profile_image, registered_at, set, ...}. Approve/reject
+  helpers (apiAdminApproveMember / apiAdminRejectMember) PATCH the
+  appropriately-named endpoints.
+- E2E (headless Chrome, real backend, admin login): panel renders the real
+  pending rows (emails/sets/dates + real Cloudinary photos); Approve removes
+  the row instantly with a success notice; Reject opens the modal, Cancel keeps
+  the row, confirming removes it with a "registration permanently removed"
+  notice. Zero console exceptions; `next build` green.
+- Existing unverified members (pofiidollar, amosaaron83) remain in the pending
+  list untouched; all synthetic e2e users created for verification were deleted.

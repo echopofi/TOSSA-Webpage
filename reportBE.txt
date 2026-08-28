@@ -170,3 +170,57 @@ Status: COMPLETE — all 93 tests passing (10 suites).
   (DATABASE_URL override, scratch DB dropped after) — Test Suites 10/10,
   Tests 107/107 passed. Dev DB was NOT re-seeded (admin + pofiidollar + admin
   photo preserved).
+
+## Section 12 — Admin Pending Member Approval (approve / reject)
+- NEW endpoints (routes/admin.js, controllers/adminController.js), admin-only:
+  - GET   /api/admin/members/pending  — members where user.is_verified=false,
+    ordered by joined_at desc; each row: id, userId, fullName, email,
+    matricNumber, profileImage, set (joined set names), registeredAt.
+  - PATCH /api/admin/members/:id/approve — sets user.is_verified=true +
+    member.is_active=true (transaction), then fires the verification email
+    "You've been verified — you can now log in." via the same retry-and-log
+    sendMail used by the admin alert; a send failure is logged loudly, never
+    silently swallowed. Idempotent guard: already-verified -> 400.
+  - PATCH /api/admin/members/:id/reject — sends the rejection notice FIRST
+    (awaited, outcome logged incl. Resend messageId), THEN deletes the user
+    (cascade removes member, set_members, refresh tokens, payments, etc.).
+    Rejecting an admin account -> 400.
+- RECONCILED: the old POST /api/admin/members/:id/verify (verifyMember) is
+  REMOVED — one final naming (approve/reject) is now the only path. Grep for
+  verifyMember: no references remain outside authController's own isVerified
+  checks; the unrelated /verify/:reference payment/dues/election routes are
+  untouched.
+- Rejection email copy (email.js sendRegistrationRejected) matches the spec:
+  Subject "Update on your TSSOSA Alumni Platform registration", body with the
+  "Hi [Name] … reach out to [first admin's email] … Warm regards" copy. Contact
+  resolves to the first admin at send time, falling back to echopofii@gmail.com.
+- LOGIN STILL BLOCKS UNVERIFIED: confirms existing test auth.test.js "rejects
+  unverified user" (403) — still green with the new endpoints in place, and the
+  reject path's own E2E re-confirmed a deleted account gets 401 (no account).
+- TESTS (admin.test.js, email service jest-mocked so no network/sandbox noise):
+  pending list returns only unverified + shape incl. set/photo/date; verified
+  members excluded; 403 non-admin, 401 anon; approve flips flags + emails
+  {email, fullName} and login now 200; approve already-verified -> 400, 404,
+  auth guards; reject emails the applicant BEFORE deletion (asserted args incl.
+  admin contact), user+member+set_members gone, login 401, re-register same
+  email -> 201 fresh. Full suite: Test Suites 10/10, Tests 113/113 (scratch DB).
+- LIVE E2E (real server, sandbox Resend): 1) registered pending1.e2e ->
+  appeared in GET /pending with name/email/set/photo/date; 2) approve -> 200,
+  DB is_verified=true, login 200, re-approve -> 400 "already verified";
+  3) register reject1.e2e -> reject -> 200; backend log shows the rejection
+  email send attempted+logged BEFORE "[admin] rejected + deleted
+  registration ..." line; user gone from DB (prisma find null), login 401,
+  re-register same email -> 201, no unique-constraint residue.
+- EMAIL STANDARD: deliverability to the owner is intact — Resend log this
+  session shows several "New registration awaiting verification" entries to
+  echopofii@gmail.com with last_event "delivered" (5aced2c8, ed79328e,
+  e430c87a, 33833ded, 5210dfe7). The approve/reject mails to the test MEMBERS
+  hit the expected sandbox 403 (no verified domain — resend.com/domains
+  returned 0 domains; RESEND_FROM empty), logged as failures at the call site —
+  NOT silent. Once a domain is verified + RESEND_FROM set, those two mails
+  deliver via the exact same sendMail path. A live connect-timeout to
+  api.resend.com occurred again this session (UND_ERR_CONNECT_TIMEOUT) —
+  exactly Bug 1's failure, now absorbed by the retry layer.
+- Test e2e accounts (pending1/reject1/ui*) were deleted afterwards; DB holds
+  only echopofii (verified admin), pofiidollar (real registration, pending),
+  amosaaron83 (pre-existing pending registrant).

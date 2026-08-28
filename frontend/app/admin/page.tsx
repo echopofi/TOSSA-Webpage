@@ -37,6 +37,7 @@ import type {
 import { formatDate } from "@/lib/utils";
 import ElectionReviewPanel from "@/components/admin/ElectionReviewPanel";
 import ExcoAssignmentPanel from "@/components/admin/ExcoAssignmentPanel";
+import PendingMembersPanel from "@/components/admin/PendingMembersPanel";
 
 // ─── Form shape ───────────────────────────────────────────────────────────────
 
@@ -296,6 +297,9 @@ export default function AdminPage() {
           </Card>
         ))}
       </div>
+
+      {/* ── Pending member approvals — GET /api/admin/members/pending ────── */}
+      <PendingMembersPanel />
 
       {/* ── Two-column layout ────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

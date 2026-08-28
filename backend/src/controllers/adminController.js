@@ -188,43 +188,146 @@ async function updateMemberRole(req, res) {
   }
 }
 
-// POST /api/admin/members/:id/verify
-// Approves a registered member so they can sign in (login rejects
-// unverified accounts with 403). Takes a member id (from the register
-// response / member record), not a user id.
-async function verifyMember(req, res) {
+// GET /api/admin/members/pending
+// Lists every registrant whose account is not yet verified. Rejected applicants
+// are deleted outright, so this is the only "review" state an admin sees.
+async function pendingMembers(req, res) {
   try {
-    const member = await prisma.member.findUnique({ where: { id: req.params.id } });
-    if (!member) {
-      return res.status(404).json({ error: 'Member not found' });
-    }
-
-    await prisma.user.update({
-      where: { id: member.userId },
-      data: { isVerified: true },
+    const members = await prisma.member.findMany({
+      where: { user: { isVerified: false } },
+      include: {
+        user: { select: { id: true, fullName: true, email: true, createdAt: true } },
+        setMembers: { include: { set: { select: { setName: true } } } },
+      },
+      orderBy: { joinedAt: 'desc' },
     });
 
-    await prisma.member.update({
-      where: { id: member.id },
-      data: { isActive: true },
+    res.json({
+      members: members.map((m) => ({
+        id: m.id,
+        userId: m.user.id,
+        fullName: m.user.fullName,
+        email: m.user.email,
+        matricNumber: m.matricNumber,
+        profileImage: m.profileImage,
+        set: m.setMembers.map((s) => s.set.setName).join(', ') || null,
+        registeredAt: m.user.createdAt,
+      })),
     });
-
-    const user = await prisma.user.findUnique({
-      where: { id: member.userId },
-      select: { email: true, fullName: true },
-    });
-    if (user) {
-      const { sendVerificationApproved } = require('../services/email');
-      sendVerificationApproved(user).catch(
-        (err) => console.error('Verification-approval email call failed:', err && err.message)
-      );
-    }
-
-    res.json({ message: 'Member verified' });
   } catch (err) {
-    console.error('Verify member error:', err);
+    console.error('Pending members error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 }
 
-module.exports = { getDashboard, allPayments, allDuesPayments, deactivateMember, updateMemberRole, verifyMember };
+// PATCH /api/admin/members/:id/approve
+// Flips the applicant's account to verified so they can sign in (login rejects
+// unverified accounts with 403). The "you're verified" email uses the same
+// retry-and-log sendMail as the admin alert — a delivery failure is logged
+// loudly, never silently swallowed.
+async function approveMember(req, res) {
+  try {
+    const member = await prisma.member.findUnique({
+      where: { id: req.params.id },
+      include: { user: { select: { id: true, fullName: true, email: true, isVerified: true } } },
+    });
+    if (!member) {
+      return res.status(404).json({ error: 'Member not found' });
+    }
+    if (member.user.isVerified) {
+      return res.status(400).json({ error: 'Member is already verified' });
+    }
+
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: member.userId }, data: { isVerified: true } }),
+      prisma.member.update({ where: { id: member.id }, data: { isActive: true } }),
+    ]);
+
+    const { sendVerificationApproved } = require('../services/email');
+    sendVerificationApproved({ email: member.user.email, fullName: member.user.fullName })
+      .then((result) => {
+        if (result && !result.success) {
+          console.error(`Verification-approved email to ${member.user.email} failed: ${result.error}`);
+        }
+      })
+      .catch((err) => {
+        console.error(`Verification-approved email to ${member.user.email} call failed:`, err && err.message);
+      });
+
+    console.log(`[admin] approved member ${member.user.fullName} <${member.user.email}> (member ${member.id})`);
+    res.json({
+      message: 'Member approved — they can now log in',
+      member: {
+        id: member.id,
+        fullName: member.user.fullName,
+        email: member.user.email,
+        isVerified: true,
+      },
+    });
+  } catch (err) {
+    console.error('Approve member error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// PATCH /api/admin/members/:id/reject
+// Deletes the applicant's user + member records entirely (a rejected applicant
+// was never confirmed as a TSSOSA alumnus, so nothing is retained). The
+// rejection notice is sent BEFORE the deletion, while the email address still
+// exists, using the same retry-and-log sendMail pattern.
+async function rejectMember(req, res) {
+  try {
+    const member = await prisma.member.findUnique({
+      where: { id: req.params.id },
+      include: { user: { select: { id: true, fullName: true, email: true, role: true } } },
+    });
+    if (!member) {
+      return res.status(404).json({ error: 'Member not found' });
+    }
+    if (member.user.role === 'admin') {
+      return res.status(400).json({ error: 'Cannot reject an admin account' });
+    }
+
+    const { sendRegistrationRejected } = require('../services/email');
+    const admin = await prisma.user.findFirst({ where: { role: 'admin' }, select: { email: true } });
+    const contact = admin ? admin.email : 'echopofii@gmail.com';
+
+    // 1. Email first — we still have their address here.
+    const emailResult = await sendRegistrationRejected(
+      { email: member.user.email, fullName: member.user.fullName },
+      contact
+    );
+    if (!emailResult || !emailResult.success) {
+      console.error(
+        `[admin] rejection email to ${member.user.email} failed: ${emailResult && emailResult.error}`
+      );
+    } else {
+      console.log(
+        `[admin] rejection email sent to ${member.user.email} (${emailResult.messageId}) before deletion`
+      );
+    }
+
+    // 2. Then delete. user.delete cascades member, set_members, refresh tokens,
+    // payments, etc. — a re-registration with the same email is a fresh start.
+    await prisma.user.delete({ where: { id: member.user.id } });
+
+    console.log(
+      `[admin] rejected + deleted registration for ${member.user.email} (user ${member.user.id}, member ${member.id})`
+    );
+    res.json({ message: 'Registration rejected and removed' });
+  } catch (err) {
+    console.error('Reject member error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+module.exports = {
+  getDashboard,
+  allPayments,
+  allDuesPayments,
+  deactivateMember,
+  updateMemberRole,
+  pendingMembers,
+  approveMember,
+  rejectMember,
+};

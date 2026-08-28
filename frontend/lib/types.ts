@@ -305,6 +305,18 @@ export interface AdminDashboard {
   total_registration_payments: number;
 }
 
+/** GET /api/admin/members/pending — one applicant awaiting review */
+export interface PendingMember {
+  id: string;             // member id (used by approve/reject)
+  user_id: string;
+  full_name: string;
+  email: string;
+  matric_number?: string;
+  profile_image?: string;
+  set?: string;           // e.g. "2021" or "2020, 2021"
+  registered_at: string;  // users.created_at
+}
+
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
 export interface PaginatedResponse<T> {

@@ -49,6 +49,7 @@ import type {
   ExcoOfficer,
   CloudinarySignature,
   AssignOfficerPayload,
+  PendingMember,
 } from "@/lib/types";
 
 import {
@@ -921,6 +922,74 @@ export async function apiAdminEndOfficerTerm(
 export async function apiGetAdminDashboard(): Promise<ApiSuccess<AdminDashboard>> {
   await delay();
   return ok(MOCK_ADMIN_DASHBOARD);
+}
+
+// ─── Admin (pending member approvals) ─────────────────────────────────────────
+
+/**
+ * GET /api/admin/members/pending — real endpoint, never mock/cached data (Bug 2
+ * pattern: authenticated fetch only). Returns unverified registrants awaiting
+ * review with name, email, set, registration date, and photo.
+ */
+export async function apiAdminListPendingMembers(): Promise<ApiSuccess<PendingMember[]>> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl || !getAccessToken()) {
+    throw new ApiRequestError(0, "Pending members require the backend. Please sign in again.");
+  }
+  const res = await authedFetch("/api/admin/members/pending");
+  const json = (await res.json()) as
+    | {
+        members?: Array<{
+          id: string;
+          userId: string;
+          fullName: string;
+          email: string;
+          matricNumber?: string | null;
+          profileImage?: string | null;
+          set?: string | null;
+          registeredAt: string;
+        }>;
+      }
+    | undefined;
+  // Backend returns camelCase — normalize to the Member-style snake_case shape.
+  return ok(
+    (json?.members ?? []).map((m) => ({
+      id: m.id,
+      user_id: m.userId,
+      full_name: m.fullName,
+      email: m.email,
+      matric_number: m.matricNumber ?? undefined,
+      profile_image: m.profileImage ?? undefined,
+      set: m.set ?? undefined,
+      registered_at: m.registeredAt,
+    }))
+  );
+}
+
+/** PATCH /api/admin/members/:id/approve — verify + email the applicant. */
+export async function apiAdminApproveMember(
+  id: string
+): Promise<ApiSuccess<{ message: string }>> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl || !getAccessToken()) {
+    throw new ApiRequestError(0, "Requires the backend. Please sign in again.");
+  }
+  const res = await authedFetch(`/api/admin/members/${id}/approve`, { method: "PATCH" });
+  const json = (await res.json()) as { message?: string } | undefined;
+  return ok({ message: json?.message ?? "Member approved" });
+}
+
+/** PATCH /api/admin/members/:id/reject — email then PERMANENTLY delete the record. */
+export async function apiAdminRejectMember(
+  id: string
+): Promise<ApiSuccess<{ message: string }>> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl || !getAccessToken()) {
+    throw new ApiRequestError(0, "Requires the backend. Please sign in again.");
+  }
+  const res = await authedFetch(`/api/admin/members/${id}/reject`, { method: "PATCH" });
+  const json = (await res.json()) as { message?: string } | undefined;
+  return ok({ message: json?.message ?? "Registration rejected and removed" });
 }
 
 /** GET /api/admin/payments */

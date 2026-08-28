@@ -107,11 +107,27 @@ async function sendRegistrationConfirmation(user) {
 async function sendVerificationApproved(user) {
   return sendMail({
     to: user.email,
-    subject: 'Your Alumni Association account is verified',
+    subject: "You've been verified — you can now log in.",
     html: `
-      <h2>You're all set, ${user.fullName}!</h2>
-      <p>An administrator has verified your account. You can now sign in and complete your registration.</p>
+      <h2>Welcome aboard, ${user.fullName}!</h2>
+      <p>An administrator has approved your alumni registration. You've been verified — you can now log in and complete your registration.</p>
       <p>Need to pay the one-time registration fee? Sign in and head to your dashboard.</p>
+    `,
+  });
+}
+
+// Sent to an applicant whose registration was reviewed and rejected (before
+// their record is deleted). contactEmail is the address the applicant can reply
+// to (defaults to the first admin's email, falling back to the litany below).
+async function sendRegistrationRejected(user, contactEmail = 'echopofii@gmail.com') {
+  return sendMail({
+    to: user.email,
+    subject: 'Update on your TSSOSA Alumni Platform registration',
+    html: `
+      <p>Hi ${user.fullName},</p>
+      <p>Thank you for your interest in joining the TSSOSA Alumni community. After reviewing your registration, we weren't able to confirm your details as a TSSOSA alumnus at this time.</p>
+      <p>If you believe this was a mistake, or you'd like to share a bit more information to help us verify your alumni status, please reach out directly to <strong>${contactEmail}</strong> — we'd be glad to take another look.</p>
+      <p>Warm regards,<br/>TSSOSA Alumni Association</p>
     `,
   });
 }
@@ -169,6 +185,7 @@ module.exports = {
   sendMail,
   sendRegistrationConfirmation,
   sendVerificationApproved,
+  sendRegistrationRejected,
   sendPaymentConfirmation,
   sendDuesReminder,
   sendNewRegistrationAlert,
