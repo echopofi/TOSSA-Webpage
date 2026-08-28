@@ -13,6 +13,9 @@ const NAME_MAX = 255;
 const PHONE_MAX = 30;
 const MATRIC_MAX = 50;
 const PASSWORD_MAX = 128;
+// matches the prisma @db.Uuid ids — a non-UUID setId (e.g. the old "set_2005"
+// mock ids) must fail with a clean 400, not a Prisma 500.
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -73,6 +76,10 @@ async function register(req, res) {
     }
     if (clean.matricNumber && clean.matricNumber.length > MATRIC_MAX) {
       return res.status(400).json({ error: 'Matric number is too long' });
+    }
+
+    if (typeof setId !== 'string' || !UUID_REGEX.test(setId)) {
+      return res.status(400).json({ error: 'Invalid graduation set' });
     }
 
     const existing = await prisma.user.findUnique({ where: { email: clean.email } });

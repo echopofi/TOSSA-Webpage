@@ -446,8 +446,6 @@ function RegisterContent() {
 
   const {
     register,
-    control,
-    handleSubmit,
     getValues,
     trigger,
     watch,
@@ -473,26 +471,50 @@ function RegisterContent() {
     setStep((s) => Math.min(s + 1, 4));
   };
 
-  async function onSubmit(data: FormData) {
-    // Guard against double submission (e.g. double-click before the button re-renders).
+  async function onSubmit() {
+    // Disable the button + guard immediately on click, BEFORE validating or
+    // waiting on the network, so the user always sees it processing.
     if (submittingRef.current) return;
     submittingRef.current = true;
     setLoading(true);
     setSubmitError("");
     try {
+      // Re-validate the whole wizard. RHF's own handleSubmit does this silently
+      // and never calls the handler on failure — so do it here and tell the
+      // user what happened instead of leaving the button doing nothing.
+      const valid = await trigger(undefined, { shouldFocus: false });
+      if (!valid) {
+        setSubmitError("Some required fields are incomplete or invalid. Please go back and review your details before submitting.");
+        return;
+      }
+      const data = getValues();
+
       // The set dropdown falls back to MOCK_SETS when the backend is unreachable
       // at page load. Resolve a mock ("set_xxxx") id to a real backend UUID here
-      // so we never POST a fake setId.
+      // so we never POST a fake setId — or stop with a clear message.
       let setId = data.setId;
       if (setId.startsWith("set_")) {
         const fallbackName = MOCK_SETS.find((s) => s.id === setId)?.set_name;
+        let fresh: { data: GraduationSet[] } | null = null;
         try {
-          const fresh = await apiGetSets();
-          const real = fresh.data.find((s) => s.set_name === fallbackName) || fresh.data[0];
-          if (real) setId = real.id;
+          fresh = await apiGetSets();
         } catch {
-          /* still can't reach the server — the POST below will surface it clearly */
+          /* surfaced below */
         }
+        const real = fresh?.data.find((s) => s.set_name === fallbackName);
+        if (fresh && fresh.data.length > 0 && !real) {
+          throw new ApiRequestError(
+            0,
+            "Your graduating set didn't load from the server — the page showed older placeholder sets. Please reload this page and select Class of 2020 or 2021 again."
+          );
+        }
+        if (real) setId = real.id;
+      }
+      if (setId.startsWith("set_")) {
+        throw new ApiRequestError(
+          0,
+          "Graduating sets couldn't be loaded from the server. Please reload this page and try again."
+        );
       }
 
       await apiRegister({
@@ -618,7 +640,13 @@ function RegisterContent() {
 
         {/* Form card */}
         <div className="card w-full max-w-md p-6">
-          <form onSubmit={handleSubmit(onSubmit)} noValidate>
+          <form
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              void onSubmit();
+            }}
+          >
             {step === 1 && <Step1 register={register} errors={errors} watch={watch} />}
             {step === 2 && (
               <Step2

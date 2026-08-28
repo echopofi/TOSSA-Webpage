@@ -209,3 +209,13 @@ home/payments/sets/login, unused vars in api.ts/register — untouched).
   maps the chosen mock id (set_xxxx) to its real UUID by name — fixes "Invalid
   graduation set" from a fake setId. 409 now shows "That email is already
   registered. Go to the login page and sign in instead."
+- FIX(register submit UX + root cause): the register page was POSTing MOCK set ids
+  (set_2005 etc.) when the backend was briefly unreachable at page load -> backend
+  500. Now the submit handler validates ALL fields itself (RHF handleSubmit used
+  to fail SILENTLY — button never disabled, no message), disables the button +
+  shows "Please wait…" immediately on click, re-fetches real sets to map a mock
+  id by name, and if the mock set can't be matched to a real 2020/2021 set it
+  shows a clear "reload and re-select" message instead of POSTing a fake id.
+  Verified E2E: (A1/A2) blocked-sets -> clear messages, NO user created; (B)
+  button disabled + Please-wait during a slowed submit, success; (C) real
+  registration with the dropped asset image. Backend 400s malformed ids (no 500).

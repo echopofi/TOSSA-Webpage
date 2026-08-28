@@ -108,3 +108,8 @@ Status: COMPLETE — all 93 tests passing (10 suites).
   matricNumber <=50, password 8..128. Inputs trimmed/lowercased before use.
 - Tests: 3 new cases (bad email format, overlong email+name, overlong
   password+phone, malformed login email) — suite now 97/97.
+- FIX(register 500 -> 400): setId going to prisma.graduationSet.findUnique must be a
+  UUID. A fake "set_2005"-style id used to throw "Error creating UUID ... found
+  's' at 1" -> 500 "Internal server error" (the exact failure the user hit at
+  submit). New UUID_REGEX guard returns 400 "Invalid graduation set". Test added
+  (98/98). Applies to any client, not just the current frontend.

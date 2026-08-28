@@ -122,6 +122,20 @@ describe('POST /api/auth/register', () => {
 
     expect(res.status).toBe(400);
   });
+
+  it('rejects non-UUID (mock) setId with 400, not 500', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'legacyset@test.com',
+        password: 'password123',
+        fullName: 'Legacy Set',
+        setId: 'set_2021',
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Invalid graduation set');
+  });
 });
 
 describe('POST /api/auth/login', () => {
