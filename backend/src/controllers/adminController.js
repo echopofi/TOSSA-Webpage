@@ -209,6 +209,15 @@ async function verifyMember(req, res) {
       data: { isActive: true },
     });
 
+    const user = await prisma.user.findUnique({
+      where: { id: member.userId },
+      select: { email: true, fullName: true },
+    });
+    if (user) {
+      const { sendVerificationApproved } = require('../services/email');
+      sendVerificationApproved(user).catch(() => {});
+    }
+
     res.json({ message: 'Member verified' });
   } catch (err) {
     console.error('Verify member error:', err);

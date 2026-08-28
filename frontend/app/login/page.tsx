@@ -11,7 +11,7 @@ import Footer from "@/components/layout/Footer";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { apiLogin, ApiRequestError } from "@/lib/api";
-import { saveCurrentUser } from "@/lib/session";
+import { saveCurrentUser, saveAccessToken } from "@/lib/session";
 import { EMAIL_REGEX, EMAIL_MAX, PASSWORD_MAX } from "@/lib/validation";
 
 interface FormData {
@@ -44,6 +44,8 @@ function LoginContent() {
         email: res.data.user.email,
         role: res.data.user.role,
       });
+      // Bearer token for authenticated API calls (profile edits, etc.)
+      saveAccessToken(res.data.access_token);
       // Only allow relative destinations (never open redirects).
       const target = next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
       router.push(target);

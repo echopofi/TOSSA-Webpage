@@ -12,6 +12,7 @@ import {
   Megaphone,
   Vote,
   Shield,
+  Settings,
   LogOut,
 } from "lucide-react";
 import clsx from "clsx";
@@ -24,6 +25,7 @@ const navItems = [
   { href: "/exco",         icon: Shield,          label: "Our Exco"    },
   { href: "/profile",      icon: User,            label: "My Profile"  },
   { href: "/admin",        icon: Megaphone,       label: "Admin Panel", admin: true },
+  { href: "/admin/settings", icon: Settings,      label: "Admin Settings", admin: true },
 ];
 
 interface SidebarProps {

@@ -11,6 +11,7 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "node prisma/seed.js",
+    "db:reset": "node scripts/reset-db.js",
     "test": "jest --runInBand --forceExit",
     "test:verbose": "jest --runInBand --forceExit --verbose"
   },

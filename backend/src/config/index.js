@@ -26,6 +26,10 @@ module.exports = {
   //   dues_cycles (fee_type 'dues' | 'web'); amounts are always read from the DB.
   registrationFeeAmount: parseInt(process.env.REGISTRATION_FEE_AMOUNT, 10) || 1000,
   email: {
+    // Resend API takes precedence when RESEND_API_KEY is set; SMTP (nodemailer)
+    // remains as a fallback for self-hosted setups.
+    resendApiKey: process.env.RESEND_API_KEY,
+    resendFrom: process.env.RESEND_FROM, // e.g. "Alumni Association <no-reply@yourdomain.com>"
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT, 10) || 587,
     user: process.env.SMTP_USER,

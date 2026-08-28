@@ -25,6 +25,7 @@ export interface SessionUser {
 }
 
 const KEY = "tssosa_current_user";
+const TOKEN_KEY = "tssosa_access_token";
 const listeners = new Set<() => void>();
 // undefined = not read yet this session; null = explicitly logged out/none.
 let cached: SessionUser | null | undefined = undefined;
@@ -88,4 +89,26 @@ export function subscribeAuth(listener: () => void): () => void {
 export function getCurrentUserSnapshot(): SessionUser | null {
   if (cached === undefined) cached = readFromStorage();
   return cached;
+}
+
+// ─── Access token (Bearer) for authenticated API calls ────────────────────────
+// Separate key so SessionUser stays a plain serializable identity object.
+
+export function saveAccessToken(token: string): void {
+  if (typeof window === "undefined" || !token) return;
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function getAccessToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function clearAccessToken(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(TOKEN_KEY);
 }

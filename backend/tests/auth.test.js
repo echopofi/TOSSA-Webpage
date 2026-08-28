@@ -1,4 +1,5 @@
 const request = require('supertest');
+const bcrypt = require('bcryptjs');
 const { createTestApp } = require('./helpers/app');
 const { seedTestData, generateAccessToken } = require('./helpers/seed');
 const { prisma } = require('./helpers/app');
@@ -229,5 +230,155 @@ describe('POST /api/auth/logout', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.message).toBe('Logged out');
+  });
+});
+
+describe('PATCH /api/auth/me', () => {
+  it('updates the authenticated user’s profile and persists it', async () => {
+    const token = generateAccessToken(data.memberUser);
+    const res = await request(app)
+      .patch('/api/auth/me')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        fullName: 'Renamed Member',
+        phone: '+234 800 000 1234',
+        gender: 'Female',
+        address: 'Lagos, Nigeria',
+        bio: 'Hello world',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.user.fullName).toBe('Renamed Member');
+    expect(res.body.member.phone).toBe('+234 800 000 1234');
+    expect(res.body.member.address).toBe('Lagos, Nigeria');
+    expect(res.body.member.bio).toBe('Hello world');
+
+    const persisted = await prisma.user.findUnique({
+      where: { id: data.memberUser.id },
+      include: { member: true },
+    });
+    expect(persisted.fullName).toBe('Renamed Member');
+    expect(persisted.member.phone).toBe('+234 800 000 1234');
+
+    // Restore seed state for later tests
+    await prisma.user.update({
+      where: { id: data.memberUser.id },
+      data: { fullName: 'Member User' },
+    });
+    await prisma.member.update({
+      where: { id: persisted.member.id },
+      data: { phone: null, address: null, bio: null, gender: 'female' },
+    });
+  });
+
+  it('rejects an overlong phone number', async () => {
+    const token = generateAccessToken(data.memberUser);
+    const res = await request(app)
+      .patch('/api/auth/me')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ phone: 'x'.repeat(31) });
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects an empty fullName', async () => {
+    const token = generateAccessToken(data.memberUser);
+    const res = await request(app)
+      .patch('/api/auth/me')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ fullName: '   ' });
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects an unauthenticated request', async () => {
+    const res = await request(app).patch('/api/auth/me').send({ fullName: 'X' });
+    expect(res.status).toBe(401);
+  });
+
+  it('creates a missing member record (admin who never completed registration)', async () => {
+    const hash = await bcrypt.hash('password123', 12);
+    const loneAdmin = await prisma.user.create({
+      data: {
+        email: 'loneadmin@test.com',
+        passwordHash: hash,
+        fullName: 'Lone Admin',
+        role: 'admin',
+        isVerified: true,
+      },
+    });
+
+    try {
+      const token = generateAccessToken(loneAdmin);
+      const res = await request(app)
+        .patch('/api/auth/me')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ phone: '+234 1', gender: 'male' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.member).toBeDefined();
+      expect(res.body.member.phone).toBe('+234 1');
+      expect(res.body.member.gender).toBe('male');
+    } finally {
+      await prisma.member.deleteMany({ where: { userId: loneAdmin.id } });
+      await prisma.user.delete({ where: { id: loneAdmin.id } });
+    }
+  });
+});
+
+describe('PATCH /api/auth/password', () => {
+  it('changes the password, rejects the old one, and accepts the new one', async () => {
+    const token = generateAccessToken(data.memberUser);
+    const res = await request(app)
+      .patch('/api/auth/password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ currentPassword: 'member12345', newPassword: 'newpass12345' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe('Password changed successfully');
+
+    const updated = await prisma.user.findUnique({ where: { id: data.memberUser.id } });
+    expect(await bcrypt.compare('member12345', updated.passwordHash)).toBe(false);
+    expect(await bcrypt.compare('newpass12345', updated.passwordHash)).toBe(true);
+
+    const oldLogin = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'member@test.com', password: 'member12345' });
+    expect(oldLogin.status).toBe(401);
+
+    const newLogin = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'member@test.com', password: 'newpass12345' });
+    expect(newLogin.status).toBe(200);
+
+    // Restore seed password for later tests
+    const hash = await bcrypt.hash('member12345', 12);
+    await prisma.user.update({ where: { id: data.memberUser.id }, data: { passwordHash: hash } });
+  });
+
+  it('rejects a wrong current password', async () => {
+    const token = generateAccessToken(data.memberUser);
+    const res = await request(app)
+      .patch('/api/auth/password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ currentPassword: 'wrong-password', newPassword: 'whatever123' });
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe('Current password is incorrect');
+  });
+
+  it('rejects a too-short new password', async () => {
+    const token = generateAccessToken(data.memberUser);
+    const res = await request(app)
+      .patch('/api/auth/password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ currentPassword: 'member12345', newPassword: '123' });
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects missing fields', async () => {
+    const token = generateAccessToken(data.memberUser);
+    const res = await request(app)
+      .patch('/api/auth/password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ currentPassword: 'member12345' });
+    expect(res.status).toBe(400);
   });
 });

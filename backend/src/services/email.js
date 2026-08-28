@@ -2,6 +2,7 @@ const nodemailer = require('nodemailer');
 const config = require('../config');
 
 let transporter = null;
+let lastResendError = null;
 
 function getTransporter() {
   if (!transporter) {
@@ -18,8 +19,40 @@ function getTransporter() {
   return transporter;
 }
 
-async function sendMail({ to, subject, html }) {
+// Sends through Resend's HTTP API when RESEND_API_KEY is configured (the
+// preferred path); otherwise falls back to SMTP via nodemailer.
+async function sendWithResend({ to, subject, html, text }) {
+  const body = {
+    from: config.email.resendFrom || `"${config.email.fromName}" <onboarding@resend.dev>`,
+    to,
+    subject,
+    html,
+    ...(text ? { text } : {}),
+  };
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.email.resendApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    const err = new Error(`Resend ${res.status}: ${detail}`);
+    lastResendError = err.message;
+    throw err;
+  }
+  return { messageId: (await res.json()).id };
+}
+
+async function sendMail({ to, subject, html, text }) {
   try {
+    if (config.email.resendApiKey) {
+      const info = await sendWithResend({ to, subject, html, text });
+      console.log(`[email] sent to ${to} via Resend: ${info.messageId}`);
+      return { success: true, transport: 'resend', messageId: info.messageId };
+    }
     const transport = getTransporter();
     const info = await transport.sendMail({
       from: `"${config.email.fromName}" <${config.email.from}>`,
@@ -28,7 +61,7 @@ async function sendMail({ to, subject, html }) {
       html,
     });
     console.log(`Email sent to ${to}: ${info.messageId}`);
-    return { success: true, messageId: info.messageId };
+    return { success: true, transport: 'smtp', messageId: info.messageId };
   } catch (err) {
     console.error(`Failed to send email to ${to}:`, err.message);
     return { success: false, error: err.message };
@@ -42,7 +75,20 @@ async function sendRegistrationConfirmation(user) {
     html: `
       <h2>Welcome, ${user.fullName}!</h2>
       <p>Your account has been created successfully.</p>
-      <p>Please complete your registration by paying the one-time registration fee.</p>
+      <p>An administrator will verify your account shortly — you'll be able to sign in once it's approved.</p>
+      <p>After verification, please complete your registration by paying the one-time registration fee.</p>
+    `,
+  });
+}
+
+async function sendVerificationApproved(user) {
+  return sendMail({
+    to: user.email,
+    subject: 'Your Alumni Association account is verified',
+    html: `
+      <h2>You're all set, ${user.fullName}!</h2>
+      <p>An administrator has verified your account. You can now sign in and complete your registration.</p>
+      <p>Need to pay the one-time registration fee? Sign in and head to your dashboard.</p>
     `,
   });
 }
@@ -80,9 +126,27 @@ async function sendDuesReminder(user, cycle) {
   });
 }
 
+async function sendNewRegistrationAlert(adminEmail, user) {
+  return sendMail({
+    to: adminEmail,
+    subject: 'New registration awaiting verification',
+    html: `
+      <h2>New member registration</h2>
+      <p>A new alumni account was created and needs verification:</p>
+      <ul>
+        <li><strong>Name:</strong> ${user.fullName}</li>
+        <li><strong>Email:</strong> ${user.email}</li>
+      </ul>
+      <p>Sign in to the admin panel to verify this account.</p>
+    `,
+  });
+}
+
 module.exports = {
   sendMail,
   sendRegistrationConfirmation,
+  sendVerificationApproved,
   sendPaymentConfirmation,
   sendDuesReminder,
+  sendNewRegistrationAlert,
 };

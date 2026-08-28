@@ -113,3 +113,18 @@ Status: COMPLETE — all 93 tests passing (10 suites).
   's' at 1" -> 500 "Internal server error" (the exact failure the user hit at
   submit). New UUID_REGEX guard returns 400 "Invalid graduation set". Test added
   (98/98). Applies to any client, not just the current frontend.
+- FEATURE(auth/profile): PATCH /api/auth/me — authenticated user edits own profile
+  (fullName, gender, phone, address, bio, profileImage, matricNumber); upserts a
+  missing member row (admins who never completed registration). Email/role are
+  immutable here.
+- FEATURE(auth/password): PATCH /api/auth/password — current+new (8-128 chars),
+  re-hashes with bcrypt 12, revokes ALL refresh tokens so other sessions sign out.
+- FEATURE(email): Resend adapter behind services/email.js when RESEND_API_KEY is
+  set (falls back to SMTP). Live: Resend 403 sandbox test confirmed key+account
+  (echopofii@gmail.com) — test emails only go to the account owner until a domain
+  is verified at resend.com/domains. New mails: registration confirmation,
+  verification-approved, new-registration admin alert.
+- FEATURE(reset): scripts/reset-db.js (npm run db:reset) flushes all user data
+  (FK-safe order), keeps sets/cycles/positions, seeds echopofii@gmail.com /
+  admin12345 as verified admin (Class of 2021). DB now holds exactly 1 user.
+- Tests: 107/107 (auth ME + password suites added).

@@ -67,7 +67,7 @@ import {
   MOCK_EXCO_OFFICERS,
 } from "@/lib/mockData";
 
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentUser, getAccessToken } from "@/lib/session";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -87,6 +87,44 @@ export class ApiRequestError extends Error {
     this.name = "ApiRequestError";
     this.status = status;
   }
+}
+
+/**
+ * Shared fetch for authenticated endpoints. Attaches the Bearer access token
+ * saved at login (see lib/session.ts) and normalises errors into
+ * ApiRequestError so callers branch on the status code.
+ */
+async function authedFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  const { getAccessToken } = await import("@/lib/session");
+  const token = getAccessToken();
+
+  let res: Response;
+  try {
+    res = await fetch(`${apiUrl}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init.headers ?? {}),
+      },
+      credentials: "include",
+    });
+  } catch {
+    throw new ApiRequestError(0, "Unable to reach the server. Please try again.");
+  }
+
+  if (!res.ok) {
+    let message = "Request failed";
+    try {
+      const body = await res.json();
+      message = typeof body?.error === "string" ? body.error : message;
+    } catch {
+      /* non-JSON error body — keep default */
+    }
+    throw new ApiRequestError(res.status, message);
+  }
+  return res;
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -145,7 +183,7 @@ export async function apiLogin(
     }
 
     const json = (await res.json()) as
-      | { user?: { id: string; email: string; fullName: string; role?: string } }
+      | { user?: { id: string; email: string; fullName: string; role?: string }; accessToken?: string }
       | undefined;
     const u = json?.user;
     if (!u) {
@@ -159,7 +197,7 @@ export async function apiLogin(
         role: u.role === "admin" ? "admin" : "member",
         is_verified: true,
       },
-      access_token: "",
+      access_token: json?.accessToken ?? "",
     });
   }
 
@@ -257,8 +295,75 @@ export async function apiRegister(
  * GET /api/auth/me — returns user + member + set
  * Uses the identity captured at signup (see lib/session.ts) until the real
  * backend is live, so the dashboard reflects the actual logged-in member.
+ * When a real backend + access token are present it fetches the live profile.
  */
 export async function apiMe(): Promise<ApiSuccess<AuthMeResponse>> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+  if (apiUrl && getAccessToken()) {
+    const res = await authedFetch("/api/auth/me");
+    const json = (await res.json()) as
+      | {
+          user?: { id: string; email: string; fullName: string; role?: string; isVerified?: boolean };
+          member?: {
+            id: string;
+            matricNumber?: string | null;
+            gender?: string | null;
+            phone?: string | null;
+            address?: string | null;
+            bio?: string | null;
+            profileImage?: string | null;
+            isActive?: boolean;
+            joinedAt?: string;
+            sets?: Array<{ id: string; setName: string }>;
+          };
+        }
+      | undefined;
+    const u = json?.user;
+    if (!u) {
+      throw new ApiRequestError(0, "Unexpected server response. Please try again.");
+    }
+    const firstSet = json?.member?.sets?.[0];
+    return ok({
+      user: {
+        id: u.id,
+        full_name: u.fullName,
+        email: u.email,
+        role: u.role === "admin" ? "admin" : "member",
+        is_verified: !!u.isVerified,
+      },
+      member: {
+        id: json?.member?.id ?? "",
+        user_id: u.id,
+        full_name: u.fullName,
+        email: u.email,
+        gender: json?.member?.gender ?? undefined,
+        phone: json?.member?.phone ?? undefined,
+        address: json?.member?.address ?? undefined,
+        bio: json?.member?.bio ?? undefined,
+        profile_image: json?.member?.profileImage ?? undefined,
+        is_active: json?.member?.isActive ?? true,
+        joined_at: json?.member?.joinedAt ?? new Date().toISOString(),
+        set_id: firstSet?.id,
+        set_name: firstSet?.setName,
+      },
+      set: firstSet
+        ? {
+            id: firstSet.id,
+            set_name: firstSet.setName,
+            start_year: undefined as unknown as number,
+            end_year: undefined as unknown as number,
+            description: undefined,
+            group_invite_link: undefined,
+            is_active: true,
+            member_count: 0,
+            created_at: "",
+            updated_at: "",
+          }
+        : null,
+    });
+  }
+
   await delay(200);
   const session = getCurrentUser();
   if (session) {
@@ -296,6 +401,46 @@ export async function apiMe(): Promise<ApiSuccess<AuthMeResponse>> {
 export async function apiRefresh(): Promise<ApiSuccess<{ access_token: string }>> {
   await delay(200);
   return ok({ access_token: "mock_access_token_refreshed" });
+}
+
+/** PATCH /api/auth/me — authenticated user edits their own profile. */
+export async function apiUpdateProfile(payload: {
+  fullName?: string;
+  gender?: string;
+  phone?: string;
+  address?: string;
+  bio?: string;
+  profileImage?: string;
+}): Promise<ApiSuccess<{ user: AuthUser; member: Member }>> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl || !getAccessToken()) {
+    throw new ApiRequestError(0, "Profile editing requires the backend. Please sign in again.");
+  }
+  const res = await authedFetch("/api/auth/me", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+  const json = (await res.json()) as { user?: AuthUser; member?: Member };
+  if (!json.user) {
+    throw new ApiRequestError(0, "Unexpected server response. Please try again.");
+  }
+  return ok({ user: json.user, member: json.member as Member });
+}
+
+/** PATCH /api/auth/password — requires the current password; revokes other sessions. */
+export async function apiChangePassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<ApiSuccess<{ message: string }>> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl || !getAccessToken()) {
+    throw new ApiRequestError(0, "Changing the password requires the backend. Please sign in again.");
+  }
+  const res = await authedFetch("/api/auth/password", {
+    method: "PATCH",
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+  return ok({ message: "Password changed successfully" });
 }
 
 /** POST /api/auth/logout */

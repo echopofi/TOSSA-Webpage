@@ -3,7 +3,10 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const prisma = require('../config/prisma');
 const config = require('../config');
-const { sendRegistrationConfirmation } = require('../services/email');
+const {
+  sendRegistrationConfirmation,
+  sendNewRegistrationAlert,
+} = require('../services/email');
 
 // Mirror of the client-side rule in frontend/lib/validation.ts — the browser
 // check only stops typos; this is the authoritative gate.
@@ -138,6 +141,19 @@ async function register(req, res) {
     });
 
     sendRegistrationConfirmation({ email: user.email, fullName: user.fullName }).catch(() => {});
+
+    prisma.user
+      .findFirst({ where: { role: 'admin' }, select: { email: true } })
+      .then((admin) => {
+        if (admin) {
+          return sendNewRegistrationAlert(admin.email, {
+            email: user.email,
+            fullName: user.fullName,
+          });
+        }
+        return null;
+      })
+      .catch(() => {});
 
     res.status(201).json({
       user: {
@@ -342,4 +358,142 @@ async function me(req, res) {
   }
 }
 
-module.exports = { register, login, refresh, logout, me };
+// PATCH /api/auth/me — the authenticated user edits their own profile.
+// Email and role are intentionally immutable here (email ownership changes are
+// out of scope; role changes are admin-only via the admin routes).
+const PROFILE_FIELDS = ['fullName', 'gender', 'phone', 'address', 'bio', 'profileImage', 'matricNumber'];
+
+async function updateProfile(req, res) {
+  try {
+    const clean = {};
+    for (const key of PROFILE_FIELDS) {
+      if (req.body[key] !== undefined) {
+        clean[key] = typeof req.body[key] === 'string' ? req.body[key].trim() : req.body[key];
+      }
+    }
+
+    if (clean.fullName !== undefined && (!clean.fullName || clean.fullName.length > NAME_MAX)) {
+      return res.status(400).json({ error: 'Full name cannot be empty or too long' });
+    }
+    if (clean.phone !== undefined && clean.phone.length > PHONE_MAX) {
+      return res.status(400).json({ error: 'Phone number is too long' });
+    }
+    if (clean.matricNumber !== undefined && clean.matricNumber.length > MATRIC_MAX) {
+      return res.status(400).json({ error: 'Matric number is too long' });
+    }
+    if (clean.address !== undefined && clean.address.length > 500) {
+      return res.status(400).json({ error: 'Address is too long' });
+    }
+    if (clean.bio !== undefined && clean.bio.length > 1000) {
+      return res.status(400).json({ error: 'Bio is too long' });
+    }
+    if (clean.profileImage !== undefined && clean.profileImage.length > 2000) {
+      return res.status(400).json({ error: 'Profile image is too long' });
+    }
+    if (clean.gender !== undefined && clean.gender.length > 20) {
+      return res.status(400).json({ error: 'Gender is invalid' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (clean.fullName !== undefined) {
+      await prisma.user.update({ where: { id: user.id }, data: { fullName: clean.fullName } });
+    }
+
+    const memberPayload = {};
+    for (const key of ['gender', 'phone', 'address', 'bio', 'profileImage', 'matricNumber']) {
+      if (clean[key] !== undefined) memberPayload[key] = clean[key];
+    }
+
+    let member = null;
+    if (Object.keys(memberPayload).length > 0) {
+      member = await prisma.member.upsert({
+        where: { userId: user.id },
+        update: memberPayload,
+        create: { userId: user.id, ...memberPayload },
+      });
+    } else if (user.member) {
+      member = user.member;
+    }
+
+    const updated = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { member: true },
+    });
+
+    res.json({
+      user: {
+        id: updated.id,
+        email: updated.email,
+        fullName: updated.fullName,
+        role: updated.role,
+      },
+      member: updated.member
+        ? {
+            id: updated.member.id,
+            matricNumber: updated.member.matricNumber,
+            gender: updated.member.gender,
+            phone: updated.member.phone,
+            address: updated.member.address,
+            bio: updated.member.bio,
+            profileImage: updated.member.profileImage,
+          }
+        : null,
+    });
+  } catch (err) {
+    console.error('Update profile error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// PATCH /api/auth/password — requires the current password; on success every
+// refresh token is revoked so other sessions must sign in again.
+async function changePassword(req, res) {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
+      return res.status(400).json({ error: 'currentPassword and newPassword are required' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+    if (newPassword.length > PASSWORD_MAX) {
+      return res.status(400).json({ error: 'Password is too long' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash },
+    });
+
+    // Force re-authentication everywhere: any refresh token the user holds is
+    // now useless until they sign in again (their short-lived access token
+    // remains valid until it naturally expires).
+    await prisma.refreshToken.updateMany({
+      where: { userId: user.id, revoked: false },
+      data: { revoked: true },
+    });
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (err) {
+    console.error('Change password error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+module.exports = { register, login, refresh, logout, me, updateProfile, changePassword };

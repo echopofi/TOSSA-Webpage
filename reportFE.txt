@@ -219,3 +219,13 @@ home/payments/sets/login, unused vars in api.ts/register — untouched).
   Verified E2E: (A1/A2) blocked-sets -> clear messages, NO user created; (B)
   button disabled + Please-wait during a slowed submit, success; (C) real
   registration with the dropped asset image. Backend 400s malformed ids (no 500).
+- Admin Settings page (/admin/settings, in the admin sidebar): edit own profile
+  (name/phone/address/bio/gender) via PATCH /api/auth/me and change password via
+  PATCH /api/auth/password (current + new + confirm, min 8 chars, mismatch guard).
+  Access token saved at login (lib/session tssosa_access_token) and attached as
+  Bearer by authedFetch; apiMe now fetches the live /api/auth/me when a token
+  exists (mock fallback otherwise). Sidebar shows admin-only "Admin Settings".
+- Verified live: echopofii admin → login → /admin + /admin/settings → edit
+  profile (persisted) → change password → login with new password → revert.
+- NOTE: password change revokes refresh tokens; user must re-login (new access
+  token saved on login).
