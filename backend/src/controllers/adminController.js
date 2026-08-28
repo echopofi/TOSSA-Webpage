@@ -215,7 +215,9 @@ async function verifyMember(req, res) {
     });
     if (user) {
       const { sendVerificationApproved } = require('../services/email');
-      sendVerificationApproved(user).catch(() => {});
+      sendVerificationApproved(user).catch(
+        (err) => console.error('Verification-approval email call failed:', err && err.message)
+      );
     }
 
     res.json({ message: 'Member verified' });

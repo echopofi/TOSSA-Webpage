@@ -128,3 +128,45 @@ Status: COMPLETE — all 93 tests passing (10 suites).
   (FK-safe order), keeps sets/cycles/positions, seeds echopofii@gmail.com /
   admin12345 as verified admin (Class of 2021). DB now holds exactly 1 user.
 - Tests: 107/107 (auth ME + password suites added).
+
+## Section 11 — BUG: admin new-registration alert not delivered (Resend)
+- ROOT CAUSE (user's real repro at 16:30, pofiidollar@gmail.com / "Shamisu Abu"):
+  the fetch to api.resend.com hit an intermittent CONNECT TIMEOUT
+  (`Failed to send email to echopofii@gmail.com: fetch failed` in backend log);
+  Resend never received the request (GET /emails count 0). The send path was
+  fire-and-forget and the `.catch(() => {})` swallowed the error SILENTLY — no
+  log, no retry. Sender config/SMTP was already known-good; the earlier
+  pre-Resend server also failed SMTP (ECONNREFUSED 127.0.0.1:587) at that point,
+  so both transports hit the same network blip. Same reproduction with my own
+  test user: "User register failed 500 — Internal server error" (write failure).
+- FIX (services/email.js, now committed): sendMail retries transient failures
+  (network pattern fetch failed|ECONN|ETIMEDOUT|EAI_AGAIN|UND_ERR|socket|connect
+  timeout, plus any non-4xx status) up to 3 attempts with delays [1500, 4000];
+  4xx (e.g. Resend test-mode 403, invalid recipient 422) are PERMANENT and not
+  retried; every attempt and outcome is logged server-side, so a failed send is
+  never silent again. Call sites log explicitly on failure
+  (authController register: registration-confirmation + admin-alert, plus
+  console.warn when NO admin exists yet; adminController verifyMember).
+- VERIFYING TOOL: scripts/test-email.js + `npm run db:testemail` — sends a test
+  email to the first admin; live result messageId dd29eba0-4be7-4417-b4d4-dfbb2de7ffb3,
+  Resend last_event "delivered".
+- ACCEPTANCE — real registrations now deliver: Resend GET /emails shows
+  bc7900ed-9d48-4f69-a0ac-71e556b40796 (registration real.register.e2e@gmail.com,
+  last_event delivered/opened) and 5bc0a9c1-a26d-4ee9-b205-309d7d46c6b5
+  (registration retrycheck.e2e@gmail.com, last_event "delivered") — both
+  "New registration awaiting verification" to echopofii@gmail.com. Confirmation
+  email to those non-owner recipients correctly 403s in sandbox mode (1 attempt,
+  no retry loop).
+- LIMIT (by design, not a code bug): Resend sandbox/test mode delivers ONLY to
+  the account owner (echopofii@gmail.com). Member-facing mails (confirmation,
+  verification-approved, payment) to other recipients 403 until a domain is
+  verified at resend.com/domains and RESEND_FROM is set to an address on it
+  (documented in .env.example). For local dev/testing the admin alert is the one
+  that fully works; that is exactly the flow the user relied on.
+- Repro users created during verification (real.register.e2e, retrycheck.e2e)
+  were DELETED from the DB; remaining: echopofii@gmail.com (verified admin) and
+  pofiidollar@gmail.com (real registration, unverified member).
+- Regression: reran the full backend suite against a SCRATCH database
+  (DATABASE_URL override, scratch DB dropped after) — Test Suites 10/10,
+  Tests 107/107 passed. Dev DB was NOT re-seeded (admin + pofiidollar + admin
+  photo preserved).

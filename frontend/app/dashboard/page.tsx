@@ -15,7 +15,7 @@ import {
   Vote,
 } from "lucide-react";
 import {
-  apiMe,
+  loadMember,
   apiGetDuesSummary,
   apiGetAnnouncements,
   apiMyElectionApplications,
@@ -33,14 +33,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     (async () => {
-      // apiMe returns { user, member, set } — richer than a plain member fetch
+      // Member comes from the live /api/auth/me (falls back to session only if
+      // the live call fails — never render a stale cached identity silently).
       const [meRes, dRes, aRes, eRes] = await Promise.all([
-        apiMe(),
+        loadMember(),
         apiGetDuesSummary(),
         apiGetAnnouncements(),
         apiMyElectionApplications(),
       ]);
-      setMember(meRes.data.member);
+      setMember(meRes);
       setDues(dRes.data);
       setAnnouncements(aRes.data.slice(0, 3));
       setApplications(eRes.data);

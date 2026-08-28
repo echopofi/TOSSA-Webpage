@@ -2,7 +2,6 @@ const nodemailer = require('nodemailer');
 const config = require('../config');
 
 let transporter = null;
-let lastResendError = null;
 
 function getTransporter() {
   if (!transporter) {
@@ -40,32 +39,56 @@ async function sendWithResend({ to, subject, html, text }) {
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
     const err = new Error(`Resend ${res.status}: ${detail}`);
-    lastResendError = err.message;
+    err.status = res.status;
     throw err;
   }
   return { messageId: (await res.json()).id };
 }
 
+const RETRYABLE_NETWORK = /fetch failed|ECONN|ETIMEDOUT|EAI_AGAIN|UND_ERR|socket|connect timeout/i;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Abort after the whole retry budget; staggered inside the caller using delays.
+const RETRY_DELAYS = [1500, 4000];
+
+/**
+ * Resilient sendMail: retries transient failures (network blips, DNS, connect
+ * timeouts, 5xx) with backoff up to 3 attempts. Configuration errors (4xx —
+ * e.g. Resend test-mode 403) are NOT retried; they're permanent. Every outcome
+ * is logged server-side so a failed send is never fully silent.
+ */
 async function sendMail({ to, subject, html, text }) {
-  try {
-    if (config.email.resendApiKey) {
-      const info = await sendWithResend({ to, subject, html, text });
-      console.log(`[email] sent to ${to} via Resend: ${info.messageId}`);
-      return { success: true, transport: 'resend', messageId: info.messageId };
+  for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt += 1) {
+    try {
+      if (config.email.resendApiKey) {
+        const info = await sendWithResend({ to, subject, html, text });
+        console.log(`[email] sent to ${to} via Resend: ${info.messageId}`);
+        return { success: true, transport: 'resend', messageId: info.messageId };
+      }
+      const transport = getTransporter();
+      const info = await transport.sendMail({
+        from: `"${config.email.fromName}" <${config.email.from}>`,
+        to,
+        subject,
+        html,
+      });
+      console.log(`Email sent to ${to}: ${info.messageId}`);
+      return { success: true, transport: 'smtp', messageId: info.messageId };
+    } catch (err) {
+      const message = err && err.message ? err.message : String(err);
+      const retryable =
+        err && err.status && err.status >= 500
+          ? true
+          : RETRYABLE_NETWORK.test(message) || !err.status;
+      if (attempt < RETRY_DELAYS.length && retryable) {
+        console.error(`Email to ${to} failed (attempt ${attempt + 1}/3) — retrying: ${message}`);
+        await sleep(RETRY_DELAYS[attempt]);
+        continue;
+      }
+      console.error(`Failed to send email to ${to}: ${message}`);
+      return { success: false, error: message, retries: attempt };
     }
-    const transport = getTransporter();
-    const info = await transport.sendMail({
-      from: `"${config.email.fromName}" <${config.email.from}>`,
-      to,
-      subject,
-      html,
-    });
-    console.log(`Email sent to ${to}: ${info.messageId}`);
-    return { success: true, transport: 'smtp', messageId: info.messageId };
-  } catch (err) {
-    console.error(`Failed to send email to ${to}:`, err.message);
-    return { success: false, error: err.message };
   }
+  return { success: false, error: 'unreachable' };
 }
 
 async function sendRegistrationConfirmation(user) {

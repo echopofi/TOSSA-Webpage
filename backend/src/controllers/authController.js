@@ -140,7 +140,9 @@ async function register(req, res) {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    sendRegistrationConfirmation({ email: user.email, fullName: user.fullName }).catch(() => {});
+    sendRegistrationConfirmation({ email: user.email, fullName: user.fullName }).catch(
+      (err) => console.error('Registration-confirmation email call failed:', err && err.message)
+    );
 
     prisma.user
       .findFirst({ where: { role: 'admin' }, select: { email: true } })
@@ -151,9 +153,10 @@ async function register(req, res) {
             fullName: user.fullName,
           });
         }
+        console.warn('New-registration admin alert skipped: no admin account in DB');
         return null;
       })
-      .catch(() => {});
+      .catch((err) => console.error('New-registration admin-alert email call failed:', err && err.message));
 
     res.status(201).json({
       user: {

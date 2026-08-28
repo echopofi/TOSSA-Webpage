@@ -292,10 +292,10 @@ export async function apiRegister(
 }
 
 /**
- * GET /api/auth/me — returns user + member + set
- * Uses the identity captured at signup (see lib/session.ts) until the real
- * backend is live, so the dashboard reflects the actual logged-in member.
- * When a real backend + access token are present it fetches the live profile.
+ * GET /api/auth/me — returns user + member + set.
+ * Prefers the live backend (requires a saved access token). Falls back to the
+ * identity captured at signup (see lib/session.ts) only when no backend/token
+ * exists — so dashboards never silently show stale data once the backend is up.
  */
 export async function apiMe(): Promise<ApiSuccess<AuthMeResponse>> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -395,6 +395,51 @@ export async function apiMe(): Promise<ApiSuccess<AuthMeResponse>> {
     return ok({ user, member, set });
   }
   return ok(MOCK_AUTH_ME_RESPONSE);
+}
+
+/**
+ * Builds a best-effort Member from the localStorage session (used only when the
+ * live /api/auth/me is unreachable or the access token is missing/expired, so
+ * the protected pages can still render instead of hanging or blanking).
+ * Returns null when there is no session.
+ */
+function memberFromSession(): Member | null {
+  const session = getCurrentUser();
+  if (!session) return null;
+  const user: AuthUser = {
+    id: `usr_${Date.now()}`,
+    full_name: session.full_name,
+    email: session.email,
+    role: session.role === "admin" ? "admin" : "member",
+    is_verified: true,
+  };
+  return {
+    id: `mem_${Date.now()}`,
+    user_id: user.id,
+    full_name: session.full_name,
+    email: session.email,
+    gender: session.gender,
+    phone: session.phone,
+    address: session.address,
+    bio: session.bio,
+    profile_image: session.profile_image,
+    is_active: true,
+    joined_at: new Date().toISOString(),
+    set_id: session.setId,
+    set_name: session.set_name,
+  };
+}
+
+/**
+ * Member source for dashboard / ID-card views: fresh server data first, a
+ * deliberate localStorage fallback only if the live call fails.
+ */
+export async function loadMember(): Promise<Member | null> {
+  try {
+    return (await apiMe()).data.member;
+  } catch {
+    return memberFromSession();
+  }
 }
 
 /** POST /api/auth/refresh */

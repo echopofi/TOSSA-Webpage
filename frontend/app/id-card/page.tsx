@@ -5,7 +5,7 @@ import { toPng } from "html-to-image";
 import { Download, FlipHorizontal2 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { MemberCardFront, MemberCardBack } from "@/components/id/MemberIdCard";
-import { apiMe } from "@/lib/api";
+import { loadMember } from "@/lib/api";
 import type { Member } from "@/lib/types";
 
 type CardFace = "front" | "back";
@@ -22,8 +22,8 @@ export default function IdCardPage() {
 
   useEffect(() => {
     (async () => {
-      const res = await apiMe();
-      setMember(res.data.member);
+      const m = await loadMember();
+      setMember(m);
       setLoading(false);
     })();
   }, []);

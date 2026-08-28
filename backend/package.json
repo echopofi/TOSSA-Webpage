@@ -12,6 +12,7 @@
     "db:studio": "prisma studio",
     "db:seed": "node prisma/seed.js",
     "db:reset": "node scripts/reset-db.js",
+    "db:testemail": "node scripts/test-email.js",
     "test": "jest --runInBand --forceExit",
     "test:verbose": "jest --runInBand --forceExit --verbose"
   },

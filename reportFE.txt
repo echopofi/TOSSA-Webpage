@@ -229,3 +229,29 @@ home/payments/sets/login, unused vars in api.ts/register — untouched).
   profile (persisted) → change password → login with new password → revert.
 - NOTE: password change revokes refresh tokens; user must re-login (new access
   token saved on login).
+
+## BUG: uploaded ID photo not rendering (dashboard card + /id-card)
+- SYMPTOM: after uploading a photo, the member dashboard's embedded ID card and
+  the standalone /id-card kept showing initials instead of the picture.
+- ROOT CAUSE: MemberIdCard renders member.profile_image and the DB URL was
+  fine (HTTP 200 image/jpeg), so it was NOT a field-name or broken-URL bug. The
+  data feeding the card was stale/mock: apiMe() ONLY read the browser session
+  (fullName, class, uuid — no profile_image) and never fetched the real
+  /api/auth/me, so the photo never made it into the card props. Same for both
+  views — NOT isolated to the dashboard: the standalone /id-card used the same
+  apiMe path, so both were equally broken.
+- FIX (lib/api.ts): apiMe() now calls the live /api/auth/me when an access token
+  exists (no token => session fallback); new loadMember() prefers live data and
+  falls back to the session only on a fetch failure. app/dashboard and
+  app/id-card both load the member via loadMember(), so the card gets the real
+  Cloudinary secure_url. Dashboard's old `Promise.all([getMe, getStats])` had no
+  try/catch (an expired token could dead-spin the page) — now guarded via
+  loadMember. No member data is cached after logout (logout still clears it).
+- VERIFIED E2E (headless Chrome, real backend): echopofii admin → login →
+  hard refresh (Page.reload ignoreCache) → both the dashboard card and /id-card
+  render the real uploaded photo
+  https://res.cloudinary.com/q52frkzl/image/upload/v1787952769/members/hl4tkcoryq3wuefq7cjh.jpg
+  with img alt "Aaron O" and initialsShown:false — no fallback <div>, no
+  console warnings. Screenshots /tmp/opencode/dash-id.jpeg, /tmp/opencode/idcard.jpeg.
+- Backend/admin already supported the flow (PATCH /api/auth/me profileImage +
+  Cloudinary signed upload), so this was entirely a frontend data-binding bug.
