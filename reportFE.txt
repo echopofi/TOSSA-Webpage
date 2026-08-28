@@ -71,15 +71,69 @@ home/payments/sets/login, unused vars in api.ts/register — untouched).
   /register untouched. /members/[id] stays public via the root layout.
 - **Backend:** no changes needed — API-level auth already rejects unauthed/non-admin
   calls; this was purely a frontend rendering gate.
+- **FOUND + FIXED a hydration race in AuthGuard:** during React hydration the
+  component commits with the SSR snapshot (null), so the very first effect
+  redirected logged-in users to /login?next=… before the real localStorage
+  snapshot was applied (verified live in headless Chrome: session present yet
+  bounced to /login). Fixed by gating the redirect on a `useHydrated()` flag
+  (useSyncExternalStore, server snapshot = false) — no setState-in-effect.
+  Re-verified: logged-out /id-card → /login?next=… (content not shown), logged-in
+  → card renders, member on /admin → /dashboard.
 - **Future:** when the real backend issues an httpOnly auth cookie, add
   `middleware.ts` (cookie presence check) plus a server-side `GET /api/auth/me`
   call in each protected layout; keep AuthGuard as the defensive client layer.
 
+## 6. REAL photo upload — verified, with one blocker raised
+- **Found:** `frontend/.env.local` did not exist, so `NEXT_PUBLIC_API_URL` was
+  unset → `isRealBackend()` was false → the canvas/data-URL MOCK path was firing
+  for every registration upload. This is why photos looked "local".
+- **Fixed:** created `frontend/.env.local` (`NEXT_PUBLIC_API_URL=http://localhost:3000`)
+  + added `frontend/.env.local.example`; restarted `next dev -p 3001` so the var
+  is inlined (confirmed the bundle now carries the URL, and `undefined/api/sets`
+  is gone — /sets now reads the real backend). `.env*` is gitignored (by design).
+- With the env in place, `uploadMemberPhoto()` uses the real path: POST
+  /api/upload/cloudinary-signature → unsigned upload to Cloudinary → `secure_url`.
+- **Verified live against the running backend:**
+  - signature endpoint returns real signed params (no secret shipped) ✅
+  - upload request reaches Cloudinary; **blocked only by the invalid cloud name**
+    (`Invalid cloud_name root` — see reportBE.txt) — the request shape is correct.
+  - DB persistence confirmed via a throwaway registration: `profileImage` landed
+    in `members.profile_image` (queried, user deleted) ✅
+- **Behavior while the cloud name is wrong:** registration photo upload shows a
+  clear error ("Invalid cloud_name root") — it FAILS LOUDLY, it does not silently
+  fall back to the canvas mock. Fix = set the real `CLOUDINARY_CLOUD_NAME` in
+  backend/.env + restart the backend (see reportBE.txt).
+- **Integration heads-up:** backend returns `profileImage` (camelCase); frontend
+  Member uses `profile_image`. The mock layer maps today; real fetches need the
+  same mapping or the ID card shows initials.
+
+## 7. Standalone downloadable ID card view
+- New authenticated route **/id-card** (own minimal layout — AuthGuard + slim top
+  bar, NO sidebar/other dashboard content). Card renders centered and larger
+  (`max-w-md` vs the dashboard's `max-w-sm`).
+- `components/id/MemberIdCard.tsx` refactored: the stacked front+back default
+  export is unchanged, but `MemberCardFront` / `MemberCardBack` are now exported
+  so the standalone page composes them.
+- **Flip interaction:** front/back faces share one grid cell with CSS 3D
+  preserve-3d + rotateY, `[backface-visibility:hidden]`; "Flip to Back/Front"
+  button toggles. (The dashboard version was stacked — no flip — so the
+  standalone view is where flipping now lives.)
+- **Download:** `html-to-image` `toPng()` (new dependency), `pixelRatio: 2`,
+  exports whichever face is currently showing (front or back) to
+  `tssosa-id-front.png` / `tssosa-id-back.png` — entirely client-side. The back
+  face's inner node is captured so the 3D transform never mirrors the output.
+- **Dashboard link:** "View Full Card →" under the card on /dashboard.
+- **Verified in headless Chrome:** logged-out → /login?next=%2Fid-card (no leak);
+  logged-in → card + flip button render; Download Front saved a real 896×344 PNG
+  (388 KB, full colour data, not blank); flipping then Download Back saved a real
+  896×336 PNG with the back-face content. Both files pass PNG header/IDAT checks.
+
 ## 5. Exco members showcase
 - Types: `ExcoOfficer`, `AssignOfficerPayload`; mocks `MOCK_EXCO_OFFICERS`.
 - API: `apiGetExcoOfficers` (+ admin assign/end-term).
-- New **/exco** page (auth layout; also linked from public navbar): grid cards
-  with photo, position, name, class, term label; empty state message.
+- New **/exco** page (PUBLIC layout — see "0. Route protection"; also linked from
+  public navbar): grid cards with photo, position, name, class, term label;
+  empty state message.
 - Sidebar: added "Elections", "Our Exco"; removed hardcoded `Ada O.` from the
   payments layout mobile navbar (now reads the session user like dashboard).
 
@@ -97,5 +151,7 @@ home/payments/sets/login, unused vars in api.ts/register — untouched).
 ## Not done here / notes
 - Profile-edit page for changing the photo post-signup (endpoint exists;
   registration upload already covers the card requirement). Suggested as follow-up.
-- /exco is now PUBLIC (public-navbar layout, no guard) — see "0. Route protection".
+- get the real `CLOUDINARY_CLOUD_NAME` into backend/.env (see reportBE.txt), then
+  the Cloudinary `secure_url` replaces the data-URL mock everywhere automatically.
+- /exco is PUBLIC (public-navbar layout, no guard).
 - Amounts everywhere remain server-sourced; mocks just mirror the confirmed values.

@@ -64,4 +64,24 @@ Status: COMPLETE — all 93 tests passing (10 suites).
 - Full suite: `npm test` -> 10/10 suites, 93/93 tests passing.
 
 ## Not done here (frontend phase)
-- None backend blocking. Cloudinary keys must be added to backend/.env by the user.
+- None backend blocking.
+
+## Operational follow-up (after keys were wired into .env)
+- **Restarted the backend** (it was running with a pre-.env-config process, so
+  Cloudinary was reported "not configured" — `node src/index.js` re-launched).
+- **CORS bug fixed:** `.env` had `FRONTEND_URL=http//localhost:3001` (missing
+  colon) — would have blocked the Next origin. Fixed to `http://localhost:3001`;
+  verified `Access-Control-Allow-Origin: http://localhost:3001` on /api/sets.
+- **`/api/upload/cloudinary-signature` verified live** — returns real signed
+  params (apiKey/timestamp/signature/folder, secret never exposed).
+- **BLOCKED: Cloudinary upload fails** — `CLOUDINARY_CLOUD_NAME="root"` in
+  backend/.env is invalid; cloud returns `Invalid cloud_name root`. The unsigned
+  upload request itself is correct (it reached Cloudinary and was rejected only
+  on the cloud name). ACTION: user must put the real cloud name for this account
+  in backend/.env and restart the backend.
+- **DB persistence verified (live):** a test registration with `profileImage`
+  stored the URL in `members.profile_image` (queried, then test user deleted).
+- **Field-name note:** the API returns the photo as `profileImage` (camelCase)
+  in /api/auth/me and /api/members/*; the frontend `Member` type uses
+  `profile_image`. The mock API layer normalises this today; real fetches will
+  need the same mapping or the ID card falls back to initials.

@@ -82,8 +82,14 @@ export default function DashboardPage() {
       {/* ── Member ID card + Elections ─────────────────────────────────────── */}
       {member && (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          <div className="lg:col-span-2 flex justify-center lg:justify-start">
+          <div className="lg:col-span-2 flex flex-col items-center gap-4 lg:justify-start">
             <MemberIdCard member={member} />
+            <Link
+              href="/id-card"
+              className="inline-flex items-center gap-1.5 text-sm text-[var(--primary)] font-medium hover:underline"
+            >
+              View Full Card <ArrowRight size={14} />
+            </Link>
           </div>
 
           {/* My election applications */}

@@ -11,10 +11,14 @@ interface MemberIdCardProps {
 }
 
 /**
- * Virtual member ID card (front+back on a desktop, stacked vertically on mobile).
- * Uses the photo captured at registration; falls back to initials placeholder.
+ * Virtual member ID card.
+ *
+ * The default export keeps the stacked front+back layout used on the dashboard.
+ * The named `MemberCardFront` / `MemberCardBack` exports render a single face so
+ * /dashboard/id-card can compose a flip interaction and screenshot each face.
  */
-export default function MemberIdCard({ member, membershipNumber }: MemberIdCardProps) {
+
+export function MemberCardFront({ member }: { member: Member }) {
   const initialsText = member.full_name
     .split(" ")
     .filter(Boolean)
@@ -23,9 +27,7 @@ export default function MemberIdCard({ member, membershipNumber }: MemberIdCardP
     .join("")
     .toUpperCase();
 
-  const memNumber = membershipNumber ?? member.id.toUpperCase().replace(/_/g, "-");
-
-  const front = (
+  return (
     <div className="relative overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-gradient-to-br from-[var(--primary)] to-[#1d4ed8] text-white shadow-lg">
       <div className="absolute -right-8 -top-10 w-40 h-40 rounded-full bg-white/10" />
       <div className="absolute -left-6 -bottom-12 w-36 h-36 rounded-full bg-white/10" />
@@ -55,6 +57,7 @@ export default function MemberIdCard({ member, membershipNumber }: MemberIdCardP
             <img
               src={member.profile_image}
               alt={member.full_name}
+              crossOrigin="anonymous"
               className="w-20 h-20 rounded-xl object-cover border-2 border-white/70 bg-white"
             />
           ) : (
@@ -75,8 +78,20 @@ export default function MemberIdCard({ member, membershipNumber }: MemberIdCardP
       </div>
     </div>
   );
+}
 
-  const back = (
+export function MemberCardBack({ member, membershipNumber }: MemberIdCardProps) {
+  const initialsText = member.full_name
+    .split(" ")
+    .filter(Boolean)
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  const memNumber = membershipNumber ?? member.id.toUpperCase().replace(/_/g, "-");
+
+  return (
     <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] shadow-sm p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between text-xs">
         <span className="text-[var(--text-muted)]">Membership No.</span>
@@ -93,13 +108,25 @@ export default function MemberIdCard({ member, membershipNumber }: MemberIdCardP
         <span className="text-[var(--text-muted)]">Joined</span>
         <span className="font-medium text-[var(--text-heading)]">{formatDate(member.joined_at, "d MMM yyyy")}</span>
       </div>
+      <div className="h-px bg-[var(--border-subtle)]" />
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-[var(--text-muted)]">Member</span>
+        <span className="text-[var(--text-heading)]">
+          {initialsText || "—"} · {member.id.slice(-6).toUpperCase()}
+        </span>
+      </div>
     </div>
   );
+}
 
+/**
+ * Stacked layout (front + back) used on the dashboard.
+ */
+export default function MemberIdCard({ member, membershipNumber }: MemberIdCardProps) {
   return (
     <div className="w-full max-w-xs md:max-w-sm flex flex-col gap-3">
-      {front}
-      {back}
+      <MemberCardFront member={member} />
+      <MemberCardBack member={member} membershipNumber={membershipNumber} />
       <p className="text-[11px] text-[var(--text-muted)] text-center">
         Keep this card safe. It is your digital proof of membership.
       </p>

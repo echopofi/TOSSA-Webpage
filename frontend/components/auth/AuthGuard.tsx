@@ -11,6 +11,19 @@ interface AuthGuardProps {
   requireAdmin?: boolean;
 }
 
+const subscribeNoop = () => () => {};
+
+/**
+ * True once we've hydrated on the client (false during SSR). The server never
+ * calls subscribe, so it always sees the server snapshot (false).
+ */
+const useHydrated = () =>
+  useSyncExternalStore(
+    subscribeNoop,
+    () => true,
+    () => false
+  );
+
 /**
  * Frontend route guard. Renders nothing until we've confirmed a valid local
  * session (AuthGuard wraps the whole protected layout, so the page shell itself
@@ -18,6 +31,11 @@ interface AuthGuardProps {
  *   - no session            → redirect to /login?next=<original url>
  *   - session but not admin → redirect to /dashboard (admin-only routes)
  *   - valid session         → render children
+ *
+ * Hydration note: during the initial client render React commits the SSR snapshots
+ * (null / not-hydrated), so the redirect is gated on `hydrated`; otherwise the
+ * very first committed effect would bounce logged-in users to /login before the
+ * real localStorage snapshot is applied.
  *
  * NOTE: middleware.ts can't read localStorage (no httpOnly auth cookie in this
  * mock phase), which is why this is a client-side guard. Once the real backend
@@ -27,8 +45,10 @@ interface AuthGuardProps {
 export default function AuthGuard({ children, requireAdmin = false }: AuthGuardProps) {
   const router = useRouter();
   const user = useSyncExternalStore(subscribeAuth, getCurrentUserSnapshot, () => null);
+  const hydrated = useHydrated();
 
   useEffect(() => {
+    if (!hydrated) return;
     if (user === null) {
       const dest =
         typeof window !== "undefined"
@@ -38,7 +58,7 @@ export default function AuthGuard({ children, requireAdmin = false }: AuthGuardP
     } else if (requireAdmin && user.role !== "admin") {
       router.replace("/dashboard");
     }
-  }, [user, requireAdmin, router]);
+  }, [hydrated, user, requireAdmin, router]);
 
   const denied = user === null || (requireAdmin && user.role !== "admin");
 
