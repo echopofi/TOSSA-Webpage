@@ -66,6 +66,7 @@ import {
   MOCK_ELECTION_POSITIONS,
   MOCK_ELECTION_APPLICATIONS,
   MOCK_EXCO_OFFICERS,
+  MOCK_ADMIN_USER,
 } from "@/lib/mockData";
 
 import { getCurrentUser } from "@/lib/session";
@@ -80,13 +81,17 @@ function ok<T>(data: T): ApiSuccess<T> {
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
-/** POST /api/auth/login */
+/** POST /api/auth/login
+ * Mock only: any credentials sign in. Using the admin demo email returns an
+ * admin session (role:"admin") so route-level guards can be verified.
+ */
 export async function apiLogin(
   email: string,
   _password: string
 ): Promise<ApiSuccess<{ user: AuthUser; access_token: string }>> {
   await delay();
-  return ok({ user: MOCK_AUTH_USER, access_token: "mock_access_token" });
+  const isAdmin = email.trim().toLowerCase() === MOCK_ADMIN_USER.email.toLowerCase();
+  return ok({ user: isAdmin ? MOCK_ADMIN_USER : MOCK_AUTH_USER, access_token: "mock_access_token" });
 }
 
 /** POST /api/auth/register */
@@ -110,7 +115,7 @@ export async function apiMe(): Promise<ApiSuccess<AuthMeResponse>> {
       id: `usr_${Date.now()}`,
       full_name: session.full_name,
       email: session.email,
-      role: "member",
+      role: session.role === "admin" ? "admin" : "member",
       is_verified: true,
     };
     const member: Member = {

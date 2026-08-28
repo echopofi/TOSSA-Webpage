@@ -46,6 +46,35 @@ home/payments/sets/login, unused vars in api.ts/register — untouched).
 - Later photo change: wire to `PUT /api/members/me/photo` once the profile-edit
   page exists (not present in this mock app yet).
 
+## 0. Route protection (auth guard) — DONE
+- **Problem fixed:** /dashboard, /payments, /elections, /admin rendered with no
+  login check; /admin had no non-admin redirect. Anyone could open the page shell.
+- **Approach:** client-side guard (NOT middleware.ts). Sessions live in
+  localStorage (no auth cookie yet), and middleware can't read localStorage —
+  so `components/auth/AuthGuard.tsx` (a `useSyncExternalStore` client component)
+  wraps the ENTIRE layout of each protected route and renders nothing but a
+  spinner until the session is confirmed:
+  - no session → `router.replace("/login?next=<original-url>")`
+  - session, not admin on /admin → `router.replace("/dashboard")`
+  - both guards render a spinner while redirecting; data calls never pre-empt it.
+  - `lib/session.ts` now exposes `subscribeAuth`/`getCurrentUserSnapshot` (for the
+    guard + Navbar) and keeps a cached snapshot; also syncs across tabs.
+- **Login actually creates a session now:** previously `apiLogin` never called
+  `saveCurrentUser`, so "logged in" users had no session to check. Login now
+  persists {full_name, email, role} and honors the `?next=` return param
+  (relative-only, no open redirects). Fresh register also stores `role: "member"`.
+- **Admin identity:** mock `apiLogin` returns `role:"admin"` for
+  `admin@alumni.ng` (any password) so the guard path can be verified end-to-end;
+  `apiMe` maps session role onto the AuthUser.
+- **/exco now public:** replaced the sidebar/auth layout with a public-navbar
+  layout (no guard) — matches the landing + navbar link. Landing, /sets, /login,
+  /register untouched. /members/[id] stays public via the root layout.
+- **Backend:** no changes needed — API-level auth already rejects unauthed/non-admin
+  calls; this was purely a frontend rendering gate.
+- **Future:** when the real backend issues an httpOnly auth cookie, add
+  `middleware.ts` (cookie presence check) plus a server-side `GET /api/auth/me`
+  call in each protected layout; keep AuthGuard as the defensive client layer.
+
 ## 5. Exco members showcase
 - Types: `ExcoOfficer`, `AssignOfficerPayload`; mocks `MOCK_EXCO_OFFICERS`.
 - API: `apiGetExcoOfficers` (+ admin assign/end-term).
@@ -68,6 +97,5 @@ home/payments/sets/login, unused vars in api.ts/register — untouched).
 ## Not done here / notes
 - Profile-edit page for changing the photo post-signup (endpoint exists;
   registration upload already covers the card requirement). Suggested as follow-up.
-- /exco is served under the authenticated layout; the public navbar link routes
-  there as well — fine for the mock phase, adjust layout when going public.
+- /exco is now PUBLIC (public-navbar layout, no guard) — see "0. Route protection".
 - Amounts everywhere remain server-sourced; mocks just mirror the confirmed values.

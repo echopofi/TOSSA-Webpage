@@ -455,6 +455,7 @@ export default function RegisterPage() {
       saveCurrentUser({
         full_name:     data.full_name,
         email:         data.email,
+        role:          "member",
         setId:         data.setId,
         set_name:      set?.set_name,
         gender:        data.gender,

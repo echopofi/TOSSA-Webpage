@@ -1,23 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
+import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { GraduationCap } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { apiLogin } from "@/lib/api";
+import { saveCurrentUser } from "@/lib/session";
 
 interface FormData {
   email: string;
   password: string;
 }
 
-export default function LoginPage() {
+function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next");
 
   const {
     register,
@@ -29,8 +36,16 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      await apiLogin(data.email, data.password);
-      window.location.href = "/dashboard";
+      const res = await apiLogin(data.email, data.password);
+      // Persist the session so route guards can verify it before rendering.
+      saveCurrentUser({
+        full_name: res.data.user.full_name,
+        email: res.data.user.email,
+        role: res.data.user.role,
+      });
+      // Only allow relative destinations (never open redirects).
+      const target = next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+      router.push(target);
     } catch {
       setError("Invalid email or password. Please try again.");
     } finally {
@@ -86,15 +101,33 @@ export default function LoginPage() {
             </form>
 
             <p className="text-xs text-center text-[var(--text-muted)] mt-1">
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <Link href="/register" className="text-[var(--primary)] font-medium hover:underline">
                 Register
               </Link>
+            </p>
+            <p className="text-[11px] text-center text-[var(--text-muted)]">
+              Demo: any credentials work. Use <span className="font-mono">admin@alumni.ng</span> to
+              sign in as an admin.
             </p>
           </div>
         </div>
       </main>
       <Footer />
     </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-24">
+          <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   );
 }
