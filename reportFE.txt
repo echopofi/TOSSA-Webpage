@@ -196,3 +196,8 @@ home/payments/sets/login, unused vars in api.ts/register — untouched).
   greeting "Chioma". Zero console exceptions. `next build` green.
 - DEMO LOGIN for testing: member@test.com / member12345 (member), admin@test.com
   / admin12345 (admin).
+- Validation hardening: email REGEX on login (was required-only) and register;
+  confirm-password now must match password; length caps (email 254, name 255,
+  phone 30, password 128). Shared rules in lib/validation.ts, mirrored by the
+  backend (Section 10 reportBE). UI verified: invalid email / mismatched
+  passwords show inline messages and block submission on both forms.

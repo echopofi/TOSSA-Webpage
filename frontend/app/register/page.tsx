@@ -14,6 +14,7 @@ import { MOCK_SETS } from "@/lib/mockData";
 import { apiRegister, ApiRequestError, apiGetSets } from "@/lib/api";
 import type { GraduationSet } from "@/lib/types";
 import { uploadMemberPhoto } from "@/lib/upload";
+import { EMAIL_REGEX, EMAIL_MAX, NAME_MAX, PHONE_MAX, PASSWORD_MAX } from "@/lib/validation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -149,9 +150,11 @@ function PhotoUploadField({
 function Step1({
   register,
   errors,
+  watch,
 }: {
   register: ReturnType<typeof useForm<FormData>>["register"];
   errors: ReturnType<typeof useForm<FormData>>["formState"]["errors"];
+  watch: ReturnType<typeof useForm<FormData>>["watch"];
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -172,9 +175,10 @@ function Step1({
         {...register("email", {
           required: "Email is required",
           pattern: {
-            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+            value: EMAIL_REGEX,
             message: "Enter a valid email address",
           },
+          maxLength: { value: EMAIL_MAX, message: "Email is too long" },
         })}
       />
       <Input
@@ -186,6 +190,7 @@ function Step1({
         {...register("password", {
           required: "Password is required",
           minLength: { value: 8, message: "Password must be at least 8 characters" },
+          maxLength: { value: PASSWORD_MAX, message: "Password is too long" },
         })}
       />
       <Input
@@ -194,7 +199,10 @@ function Step1({
         placeholder="Re-enter your password"
         autoComplete="new-password"
         error={errors.confirmPassword?.message}
-        {...register("confirmPassword", { required: "Please confirm your password" })}
+        {...register("confirmPassword", {
+          required: "Please confirm your password",
+          validate: (v) => v === watch("password") || "Passwords do not match",
+        })}
       />
     </div>
   );
@@ -233,7 +241,7 @@ function Step2({
         label="Full name"
         placeholder="Ada Okonkwo"
         error={errors.full_name?.message}
-        {...register("full_name", { required: "Full name is required" })}
+        {...register("full_name", { required: "Full name is required", maxLength: { value: NAME_MAX, message: "Full name is too long" } })}
       />
 
       <Select
@@ -247,7 +255,7 @@ function Step2({
         label="Phone number"
         type="tel"
         placeholder="+234 800 000 0000"
-        {...register("phone")}
+        {...register("phone", { maxLength: { value: PHONE_MAX, message: "Phone number is too long" } })}
       />
 
       <Input
@@ -441,6 +449,7 @@ function RegisterContent() {
     handleSubmit,
     getValues,
     trigger,
+    watch,
     formState: { errors },
   } = useForm<FormData>({ mode: "onTouched" });
 
@@ -588,7 +597,7 @@ function RegisterContent() {
         {/* Form card */}
         <div className="card w-full max-w-md p-6">
           <form onSubmit={handleSubmit(onSubmit)} noValidate>
-            {step === 1 && <Step1 register={register} errors={errors} />}
+            {step === 1 && <Step1 register={register} errors={errors} watch={watch} />}
             {step === 2 && (
               <Step2
                 register={register}

@@ -12,6 +12,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { apiLogin, ApiRequestError } from "@/lib/api";
 import { saveCurrentUser } from "@/lib/session";
+import { EMAIL_REGEX, EMAIL_MAX, PASSWORD_MAX } from "@/lib/validation";
 
 interface FormData {
   email: string;
@@ -103,7 +104,11 @@ function LoginContent() {
                 placeholder="you@example.com"
                 autoComplete="email"
                 error={errors.email?.message}
-                {...register("email", { required: "Email is required" })}
+                {...register("email", {
+                  required: "Email is required",
+                  pattern: { value: EMAIL_REGEX, message: "Enter a valid email address" },
+                  maxLength: { value: EMAIL_MAX, message: "Email is too long" },
+                })}
               />
               <Input
                 label="Password"
@@ -111,7 +116,10 @@ function LoginContent() {
                 placeholder="Your password"
                 autoComplete="current-password"
                 error={errors.password?.message}
-                {...register("password", { required: "Password is required" })}
+                {...register("password", {
+                  required: "Password is required",
+                  maxLength: { value: PASSWORD_MAX, message: "Password is too long" },
+                })}
               />
               <Button type="submit" fullWidth loading={loading} className="mt-1">
                 Sign In

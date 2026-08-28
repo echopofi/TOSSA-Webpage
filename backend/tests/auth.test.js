@@ -69,6 +69,47 @@ describe('POST /api/auth/register', () => {
     expect(res.status).toBe(400);
   });
 
+  it('rejects invalid email format', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'not-an-email',
+        password: 'password123',
+        fullName: 'Bad Email',
+        setId: data.set2020.id,
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Invalid email');
+  });
+
+  it('rejects overlong email and name', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: `${'a'.repeat(250)}@test.com`,
+        password: 'password123',
+        fullName: 'X'.repeat(300),
+        setId: data.set2020.id,
+      });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects overlong password and phone', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'toolong@test.com',
+        password: 'x'.repeat(200),
+        fullName: 'Too Long',
+        phone: '0'.repeat(60),
+        setId: data.set2020.id,
+      });
+
+    expect(res.status).toBe(400);
+  });
+
   it('rejects invalid set', async () => {
     const res = await request(app)
       .post('/api/auth/register')
@@ -110,6 +151,15 @@ describe('POST /api/auth/login', () => {
       .send({ email: 'nobody@test.com', password: 'password123' });
 
     expect(res.status).toBe(401);
+  });
+
+  it('rejects malformed email on login', async () => {
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'not-an-email', password: 'password123' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Invalid email');
   });
 
   it('rejects unverified user', async () => {

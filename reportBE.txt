@@ -100,3 +100,11 @@ Status: COMPLETE — all 93 tests passing (10 suites).
   member@test.com / member12345.
 - To verify a new member: login as admin -> POST /api/admin/members/:memberId/verify
   with Bearer token. Backend tests: 93/93 after the change.
+
+## Section 10 — Auth input hardening (register + login)
+- Server-side email format REGEX now enforced on /api/auth/register AND /api/auth/login
+  (400 "Invalid email address"); previously only presence+unique was checked.
+- Length caps (400 on breach): email <=254, fullName <=255, phone <=30,
+  matricNumber <=50, password 8..128. Inputs trimmed/lowercased before use.
+- Tests: 3 new cases (bad email format, overlong email+name, overlong
+  password+phone, malformed login email) — suite now 97/97.

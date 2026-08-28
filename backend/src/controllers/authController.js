@@ -5,6 +5,15 @@ const prisma = require('../config/prisma');
 const config = require('../config');
 const { sendRegistrationConfirmation } = require('../services/email');
 
+// Mirror of the client-side rule in frontend/lib/validation.ts — the browser
+// check only stops typos; this is the authoritative gate.
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_MAX = 254;
+const NAME_MAX = 255;
+const PHONE_MAX = 30;
+const MATRIC_MAX = 50;
+const PASSWORD_MAX = 128;
+
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
@@ -29,15 +38,44 @@ async function register(req, res) {
   try {
     const { email, password, fullName, phone, setId, matricNumber, gender, address, bio, profileImage } = req.body;
 
-    if (!email || !password || !fullName || !setId) {
+    // Normalize trimmed inputs before any use.
+    const clean = {
+      email: typeof email === 'string' ? email.trim().toLowerCase() : email,
+      fullName: typeof fullName === 'string' ? fullName.trim() : fullName,
+      phone: typeof phone === 'string' ? phone.trim() : phone,
+      address: typeof address === 'string' ? address.trim() : address,
+      bio: typeof bio === 'string' ? bio.trim() : bio,
+      profileImage: typeof profileImage === 'string' ? profileImage.trim() : profileImage,
+      matricNumber: typeof matricNumber === 'string' ? matricNumber.trim() : matricNumber,
+    };
+
+    if (!clean.email || !password || !clean.fullName || !setId) {
       return res.status(400).json({ error: 'email, password, fullName, and setId are required' });
     }
 
-    if (password.length < 8) {
+    if (!EMAIL_REGEX.test(clean.email)) {
+      return res.status(400).json({ error: 'Invalid email address' });
+    }
+    if (clean.email.length > EMAIL_MAX) {
+      return res.status(400).json({ error: 'Email is too long' });
+    }
+    if (clean.fullName.length > NAME_MAX) {
+      return res.status(400).json({ error: 'Full name is too long' });
+    }
+    if (typeof password !== 'string' || password.length < 8) {
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
+    if (password.length > PASSWORD_MAX) {
+      return res.status(400).json({ error: 'Password is too long' });
+    }
+    if (clean.phone && clean.phone.length > PHONE_MAX) {
+      return res.status(400).json({ error: 'Phone number is too long' });
+    }
+    if (clean.matricNumber && clean.matricNumber.length > MATRIC_MAX) {
+      return res.status(400).json({ error: 'Matric number is too long' });
+    }
 
-    const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    const existing = await prisma.user.findUnique({ where: { email: clean.email } });
     if (existing) {
       return res.status(409).json({ error: 'Email already registered' });
     }
@@ -51,21 +89,21 @@ async function register(req, res) {
 
     const user = await prisma.user.create({
       data: {
-        email: email.toLowerCase(),
+        email: clean.email,
         passwordHash,
-        fullName,
+        fullName: clean.fullName,
       },
     });
 
     const member = await prisma.member.create({
       data: {
         userId: user.id,
-        matricNumber: matricNumber || null,
-        phone: phone || null,
+        matricNumber: clean.matricNumber || null,
+        phone: clean.phone || null,
         gender: gender || null,
-        address: address || null,
-        bio: bio || null,
-        profileImage: profileImage || null,
+        address: clean.address || null,
+        bio: clean.bio || null,
+        profileImage: clean.profileImage || null,
       },
     });
 
@@ -116,12 +154,17 @@ async function register(req, res) {
 async function login(req, res) {
   try {
     const { email, password } = req.body;
+    const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : email;
 
-    if (!email || !password) {
+    if (!cleanEmail || !password) {
       return res.status(400).json({ error: 'email and password are required' });
     }
 
-    const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    if (!EMAIL_REGEX.test(cleanEmail)) {
+      return res.status(400).json({ error: 'Invalid email address' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email: cleanEmail } });
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
