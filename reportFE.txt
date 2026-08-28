@@ -155,3 +155,23 @@ home/payments/sets/login, unused vars in api.ts/register — untouched).
   the Cloudinary `secure_url` replaces the data-URL mock everywhere automatically.
 - /exco is PUBLIC (public-navbar layout, no guard).
 - Amounts everywhere remain server-sourced; mocks just mirror the confirmed values.
+## Section 8 — Sign-in now requires a registered account (fixed flow)
+- `apiLogin` (lib/api.ts) is now REAL: POST {NEXT_PUBLIC_API_URL}/api/auth/login,
+  bcrypt-verified against the DB. Unregistered email or wrong password → throw
+  ApiRequestError(401) — never signs the user in. Backend 403 (unverified
+  account) → inline message on the login page. No backend configured → falls
+  back to the registered-only demo accounts (admin@test.com/admin12345,
+  member@test.com/member12345) instead of accepting any credentials.
+- Login page: on 401 notifies + redirects to /register?notice=invalid-login
+  with a banner ("We couldn't find an account matching that email and password.
+  Create your account below to get started."). Register page reads ?notice= via
+  useSearchParams (now Suspense-wrapped) and renders the banner.
+- Demo hint on the login page updated to the seeded accounts.
+- Verified E2E (headless Chrome): valid member → /dashboard; valid admin →
+  /admin allowed; unregistered email & wrong password → /register?notice=
+  invalid-login, session NOT created (/dashboard still guarded); no console
+  exceptions. `next build` passes (14 routes).
+- NOTE: frontend registration is still the mock flow (does not write to the
+  backend yet), so new signups can't sign in through the UI until register is
+  real AND an admin verifies them. Real Cloudinary upload also still blocked on
+  CLOUDINARY_CLOUD_NAME (see reportBE.txt).

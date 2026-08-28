@@ -66,7 +66,6 @@ import {
   MOCK_ELECTION_POSITIONS,
   MOCK_ELECTION_APPLICATIONS,
   MOCK_EXCO_OFFICERS,
-  MOCK_ADMIN_USER,
 } from "@/lib/mockData";
 
 import { getCurrentUser } from "@/lib/session";
@@ -79,19 +78,103 @@ function ok<T>(data: T): ApiSuccess<T> {
   return { success: true, data };
 }
 
+/** Carries the HTTP status of a failed request so callers can branch (401 → not
+ *  registered / wrong password, 403 → unverified, 0 → network failure). */
+export class ApiRequestError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = status;
+  }
+}
+
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
-/** POST /api/auth/login
- * Mock only: any credentials sign in. Using the admin demo email returns an
- * admin session (role:"admin") so route-level guards can be verified.
+// Mirrors the backend seed (backend/tests/helpers/seed.js) so the "registered
+// users only" contract also holds when no backend is configured.
+const REGISTERED_DEMO_ACCOUNTS: Array<{ email: string; password: string; user: AuthUser }> = [
+  {
+    email: "admin@test.com",
+    password: "admin12345",
+    user: { id: "usr_admin_seed", full_name: "Admin User", email: "admin@test.com", role: "admin", is_verified: true },
+  },
+  {
+    email: "member@test.com",
+    password: "member12345",
+    user: { id: "usr_member_seed", full_name: "Member User", email: "member@test.com", role: "member", is_verified: true },
+  },
+];
+
+/**
+ * POST /api/auth/login — registered users only (valid email + password).
+ * The backend bcrypt-verifies against the DB and also rejects unverified
+ * accounts (403). Unregistered or wrong-credential attempts throw an
+ * ApiRequestError(401) so the login page can notify the user and route them
+ * to the registration flow — the app never signs anyone in without a real,
+ * verified account.
  */
 export async function apiLogin(
   email: string,
-  _password: string
+  password: string
 ): Promise<ApiSuccess<{ user: AuthUser; access_token: string }>> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+  if (apiUrl) {
+    let res: Response;
+    try {
+      res = await fetch(`${apiUrl}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // persist the httpOnly refresh-token cookie
+        body: JSON.stringify({ email, password }),
+      });
+    } catch {
+      throw new ApiRequestError(0, "Unable to reach the server. Please try again.");
+    }
+
+    if (!res.ok) {
+      let message = "Invalid credentials";
+      try {
+        const body = await res.json();
+        message = typeof body?.error === "string" ? body.error : message;
+      } catch {
+        /* non-JSON error body — keep default */
+      }
+      throw new ApiRequestError(res.status, message);
+    }
+
+    const json = (await res.json()) as
+      | { user?: { id: string; email: string; fullName: string; role?: string } }
+      | undefined;
+    const u = json?.user;
+    if (!u) {
+      throw new ApiRequestError(0, "Unexpected server response. Please try again.");
+    }
+    return ok({
+      user: {
+        id: u.id,
+        full_name: u.fullName,
+        email: u.email,
+        role: u.role === "admin" ? "admin" : "member",
+        is_verified: true,
+      },
+      access_token: "",
+    });
+  }
+
+  // Fallback (no backend): same registered-only contract against the seeded
+  // demo accounts instead of accepting arbitrary credentials.
   await delay();
-  const isAdmin = email.trim().toLowerCase() === MOCK_ADMIN_USER.email.toLowerCase();
-  return ok({ user: isAdmin ? MOCK_ADMIN_USER : MOCK_AUTH_USER, access_token: "mock_access_token" });
+  const attempt = email.trim().toLowerCase();
+  const match = REGISTERED_DEMO_ACCOUNTS.find(
+    (a) => a.email === attempt && a.password === password
+  );
+  if (!match) {
+    throw new ApiRequestError(401, "Invalid credentials");
+  }
+  return ok({ user: match.user, access_token: "mock_access_token" });
 }
 
 /** POST /api/auth/register */

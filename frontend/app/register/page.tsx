@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { GraduationCap, ArrowLeft, ArrowRight, Check, Camera, Loader2 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
@@ -398,14 +399,23 @@ function Step4({ data, photoUrl }: { data: Partial<FormData>; photoUrl?: string 
   );
 }
 
+// Notice banners (e.g. login → register redirect) passed via ?notice=
+const NOTICES: Record<string, string> = {
+  "invalid-login":
+    "We couldn't find an account matching that email and password. Create your account below to get started.",
+};
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-export default function RegisterPage() {
+function RegisterContent() {
   const [step, setStep]     = useState(1);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [photoUrl, setPhotoUrl] = useState("");
   const [photoError, setPhotoError] = useState("");
+
+  const searchParams = useSearchParams();
+  const notice = searchParams.get("notice");
 
   const {
     register,
@@ -520,6 +530,13 @@ export default function RegisterPage() {
           </p>
         </div>
 
+        {/* Notice from a failed login attempt */}
+        {notice && NOTICES[notice] && (
+          <div className="w-full max-w-md mb-6 rounded-xl border border-[var(--primary)] bg-[var(--primary-light)] px-4 py-3 text-sm text-[var(--text-body)]">
+            {NOTICES[notice]}
+          </div>
+        )}
+
         {/* Stepper */}
         <div className="w-full max-w-md mb-8">
           <div className="flex items-center">
@@ -604,5 +621,19 @@ export default function RegisterPage() {
 
       <Footer />
     </>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-24">
+          <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <RegisterContent />
+    </Suspense>
   );
 }

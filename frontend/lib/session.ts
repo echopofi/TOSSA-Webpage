@@ -47,8 +47,12 @@ function notifyListeners(): void {
 if (typeof window !== "undefined") {
   window.addEventListener("storage", (e) => {
     if (e.key !== KEY) return;
-    cached = e.newValue ? JSON.parse(e.newValue) : null;
-    notifyListeners();
+    try {
+      cached = e.newValue ? (JSON.parse(e.newValue) as SessionUser) : null;
+      notifyListeners();
+    } catch {
+      cached = null;
+    }
   });
 }
 

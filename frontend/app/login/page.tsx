@@ -10,7 +10,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import { apiLogin } from "@/lib/api";
+import { apiLogin, ApiRequestError } from "@/lib/api";
 import { saveCurrentUser } from "@/lib/session";
 
 interface FormData {
@@ -46,8 +46,26 @@ function LoginContent() {
       // Only allow relative destinations (never open redirects).
       const target = next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
       router.push(target);
-    } catch {
-      setError("Invalid email or password. Please try again.");
+    } catch (err) {
+      if (err instanceof ApiRequestError) {
+        if (err.status === 401) {
+          // Not a registered account (or wrong password) — never sign in.
+          // Notify on the registration page and carry them there.
+          router.push("/register?notice=invalid-login");
+          return;
+        }
+        if (err.status === 403) {
+          setError(
+            "Your account has not been verified yet. An admin will verify your account before you can sign in."
+          );
+          return;
+        }
+      }
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to reach the server. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -107,8 +125,10 @@ function LoginContent() {
               </Link>
             </p>
             <p className="text-[11px] text-center text-[var(--text-muted)]">
-              Demo: any credentials work. Use <span className="font-mono">admin@alumni.ng</span> to
-              sign in as an admin.
+              Demo accounts: <span className="font-mono">member@test.com</span> /{" "}
+              <span className="font-mono">member12345</span> ·{" "}
+              <span className="font-mono">admin@test.com</span> /{" "}
+              <span className="font-mono">admin12345</span>
             </p>
           </div>
         </div>
