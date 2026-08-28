@@ -285,3 +285,40 @@ home/payments/sets/login, unused vars in api.ts/register — untouched).
   notice. Zero console exceptions; `next build` green.
 - Existing unverified members (pofiidollar, amosaaron83) remain in the pending
   list untouched; all synthetic e2e users created for verification were deleted.
+
+## Admin scope + role-based access audit (frontend layer)
+- Scope of admin functionality — component + call-site scan confirms the
+  Pending Members panel (and the Election Review / Exco panels) are imported
+  ONLY by app/admin/page.tsx. No approve/reject control, pending-member data,
+  or apiAdmin* fetch exists on /dashboard, /elections, /payments, /exco,
+  /sets, /members, /id-card, or /profile. The Admin Panel sidebar items are
+  navigation-only <Link href="/admin..."> elements; the member-mode sidebar
+  omits them entirely.
+- Route guard: app/admin/layout.tsx wraps /admin AND /admin/settings (nested
+  under app/admin) in AuthGuard requireAdmin. Non-admin session → router
+  replaces to /dashboard; unauthenticated → /login?next=<url>. Guard renders
+  children only after hydration confirms the session (avoids a flash redirect
+  of logged-in users).
+- Fresh-browser results (real UI login, headless Chrome):
+  * MEMBER login (scopecheck.e2e, verified member): lands /dashboard; sidebar
+    carries NO Admin Panel / Admin Settings links; visiting /admin and
+    /admin/settings directly each redirect to /dashboard; no pending-member
+    content on any page.
+  * ADMIN login (echopofii): lands /admin directly; sidebar shows the admin
+    links on both /admin and member pages (navigation only); Pending Members
+    panel renders 3 live rows.
+  * PROMOTED MEMBER login (scopecheck.e2e after PUT role=admin via the
+    existing endpoint): lands /admin, sidebar admin links appear, same 3
+    pending rows — the frontend gate reads the session role, so promoted
+    admins are indistinguishable from echopofii.
+- Functional round-trip on the current code (admin UI): register scopefl.e2e
+  -> reload /admin shows "4 awaiting approval" incl. the new row -> clicking
+  Approve removes the row instantly with "Scope Functional approved — Member
+  approved — they can now log in" -> count back to 3 -> scopefl logs in 200
+  (verification actually applied). Account deleted afterwards.
+- Acceptance matrix (all green): admin login → /admin + panel visible +
+  functional; member login → zero admin links anywhere + direct /admin URL
+  bounces to /dashboard; backend independent defenses verify at the API layer
+  (see reportBE Section 13: member token → 403 on 10 admin endpoints,
+  no token → 401). Frontend-role consumes the same role field the backend
+  trusts; the backend is the enforcement point.

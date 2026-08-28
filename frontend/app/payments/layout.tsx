@@ -14,7 +14,7 @@ export default function PaymentsLayout({
           <Navbar variant="auth" />
         </div>
         <div className="flex flex-1">
-          <Sidebar isAdmin={false} />
+          <Sidebar />
           <main className="flex-1 min-w-0 px-4 sm:px-6 py-6 md:py-8 max-w-5xl">
             {children}
           </main>

@@ -224,3 +224,90 @@ Status: COMPLETE — all 93 tests passing (10 suites).
 - Test e2e accounts (pending1/reject1/ui*) were deleted afterwards; DB holds
   only echopofii (verified admin), pofiidollar (real registration, pending),
   amosaaron83 (pre-existing pending registrant).
+
+## Section 13 — Role-based access audit (/admin scope + both layers)
+Audit pass — confirmation with actual status codes, not grep-level "it's fine".
+
+- ACCESS MODEL (confirmed): authorization is `role === 'admin'` only — the
+  JWT `role` claim (middleware/auth.js requireAdmin) on the backend and the
+  session role on the frontend. NO hardcoded email list anywhere (grep for
+  echopofii@ / admin emails in auth paths: none). Alumna promoted via the
+  existing role-change endpoint gain full admin access with zero code change.
+
+- FRONTEND LAYER — /admin scope (components/admin/* usage scan):
+  - PendingMembersPanel, ElectionReviewPanel, ExcoAssignmentPanel are each
+    imported ONLY by app/admin/page.tsx. No admin component is rendered by any
+    other route (dashboard, elections, payments, exco, sets, members, id-card,
+    profile). app/admin/settings/page.tsx is profile/password self-management
+    only.
+  - All 8 apiAdmin* functions (pending/approve/reject/elections/exco) are
+    referenced only inside components/admin/*. The admin stats fetch
+    (apiGetAdminDashboard) is referenced only by app/admin/page.tsx.
+  - Sidebar admin links ("Admin Panel", "Admin Settings") are plain
+    <Link href="/admin..."> navigation — navigation-only, no admin logic
+    embedded into whatever page is beneath them. The member-mode sidebar
+    (role !== 'admin') filters these items out entirely (verified below).
+
+- FRONTEND LAYER — route guards (fresh browser tests via real UI login):
+  - app/admin/layout.tsx wraps BOTH /admin and /admin/settings in
+    AuthGuard requireAdmin (nested under app/admin). Non-admin → redirect to
+    /dashboard; unauthenticated → /login?next=<url>.
+  - Member session (scopecheck.e2e, verified member): login → lands /dashboard;
+    sidebar shows NO "Admin Panel"/"Admin Settings" links; direct URL
+    http://localhost:3001/admin → redirected to /dashboard; direct
+    /admin/settings → redirected to /dashboard. No pending data on any member
+    page observed (component scan above corroborates).
+  - Admin session (echopofii): login → lands /admin directly (redirect fix
+    from the navigation hardening); sidebar shows both admin links on /admin
+    AND on member pages; Pending Members panel renders 3 real rows.
+
+- BACKEND LAYER — direct API, not through the UI (this is the real defense):
+  All /api/admin/* routes share `router.use(authenticateToken, requireAdmin)`
+  (routes/admin.js) — apply the guard at the router, so every admin endpoint,
+  present and future, inherits it.
+  MEMBER-Role token (valid JWT, role=member, issued by real login) against 10
+  admin endpoints — ALL returned 403 "Admin access required":
+    GET  /api/admin/members/pending              -> 403
+    GET  /api/admin/dashboard                    -> 403
+    GET  /api/admin/payments                     -> 403
+    GET  /api/admin/dues-payments                -> 403
+    PUT  /api/admin/members/:id/role             -> 403
+    PATCH /api/admin/members/:id/approve         -> 403
+    POST /api/admin/members/:id/deactivate       -> 403
+    GET  /api/admin/elections/applications       -> 403
+    PATCH /api/admin/elections/applications/:id  -> 403
+    POST /api/admin/exco                         -> 403
+  NO token against 5 admin endpoints — ALL returned 401 "Access token required":
+    GET /api/admin/members/pending, /dashboard, /payments, /dues-payments,
+    /api/admin/elections/applications -> 401
+  Control: the same member token on the public authed route /api/auth/me -> 200
+  (proves the 403s above are the admin boundary, not a broken token).
+
+- ROLE-CHANGE via existing endpoint PUT /api/admin/members/:id/role
+  (adminController.updateMemberRole — validates role ∈ {admin, member}, finds
+  member, updates the linked user.role; no email check):
+  - Promote test member scopecheck.e2e role=member -> role=admin: PUT -> 200
+    "Role updated to admin". Re-login -> JWT role claim "admin". That same
+    token then returned 200 on GET /api/admin/dashboard, /members/pending
+    (members:3), /payments, /dues-payments, /elections/applications — identical
+    access to echopofii, no hardcoded gate.
+  - Frontend mirror: after promotion, UI re-login lands /admin, sidebar shows
+    Admin Panel settings, panel renders the same 3 rows.
+  - Demote back (PUT role=member) restored member-only access; account
+    deleted after tests.
+  - NOTE (JWT semantics, documented not a bug): `role` is a claim in the
+    access token, snapshotted at issuance (15-min expiry: exp-iat=900s).
+    A role change therefore takes effect on the NEXT login, or automatically
+    within 15 minutes for a still-held token. Refresh flow issues a fresh token
+    with the new role. Short TTL bounds the stale-window.
+
+- ACCESS CONTROL NET: the strong, independent backend middleware is the real
+  line of defense (member token 403 on all admin routes even though the
+  frontend's client guard would already redirect members away — devtools /
+  direct curl can't get past the API). Frontend still owns UX: member login
+  shows no admin chrome and bouncing /admin to /dashboard.
+
+- State after audit: synthetic accounts (scopecheck.e2e, scopefl.e2e) deleted
+  via prisma cascade. DB = echopofii (admin, verified) + 3 pending unverified
+  registrants (pofiifx / pofiidollar / amosaaron83) exactly as before. Admin
+  login + pending list re-confirmed healthy post-cleanup.

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { clearCurrentUser } from "@/lib/session";
+import { clearCurrentUser, getCurrentUser } from "@/lib/session";
 import {
   LayoutDashboard,
   Users,
@@ -35,6 +35,7 @@ interface SidebarProps {
 export default function Sidebar({ isAdmin }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const isAdminUser = isAdmin === true || getCurrentUser()?.role === "admin";
 
   function handleSignOut() {
     clearCurrentUser();
@@ -63,7 +64,7 @@ export default function Sidebar({ isAdmin }: SidebarProps) {
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 flex flex-col gap-1">
         {navItems
-          .filter((item) => !item.admin || isAdmin)
+          .filter((item) => !item.admin || isAdminUser)
           .map(({ href, icon: Icon, label }) => {
             const active = pathname === href || pathname.startsWith(href + "/");
             return (

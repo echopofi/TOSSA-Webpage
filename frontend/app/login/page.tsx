@@ -47,7 +47,8 @@ function LoginContent() {
       // Bearer token for authenticated API calls (profile edits, etc.)
       saveAccessToken(res.data.access_token);
       // Only allow relative destinations (never open redirects).
-      const target = next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+      const fallback = res.data.user.role === "admin" ? "/admin" : "/dashboard";
+      const target = next && next.startsWith("/") && !next.startsWith("//") ? next : fallback;
       router.push(target);
     } catch (err) {
       if (err instanceof ApiRequestError) {
