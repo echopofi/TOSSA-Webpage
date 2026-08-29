@@ -311,3 +311,60 @@ Audit pass — confirmation with actual status codes, not grep-level "it's fine"
   via prisma cascade. DB = echopofii (admin, verified) + 3 pending unverified
   registrants (pofiifx / pofiidollar / amosaaron83) exactly as before. Admin
   login + pending list re-confirmed healthy post-cleanup.
+
+## Section 14 — Approve/Reject email copy + delivery (confirmed live)
+Spec lock-down of the two emails the Pending Members panel sends, with ACTUAL
+Resend delivery confirmation (message IDs + delivered status, not just "code
+ran"). Backend was restarted with this copy; full suite re-run on scratch DB
+after the change: Test Suites 10/10, Tests 113/113.
+
+- COPY UPDATE (was different, now matches spec exactly):
+  - sendVerificationApproved (services/email.js) subject changed from
+    "You've been verified — you can now log in." to
+    "You're verified! Welcome to the TSSOSA Alumni Platform"; body rewritten to
+    the spec copy word-for-word ("Hi [Name], / Good news — your registration
+    has been reviewed and accepted…") INCLUDING a login button + fallback link
+    to `${config.frontendUrl}/login` (FRONTEND_URL
+    http://localhost:3001 — verified reachable: GET /login -> 200). Clicking
+    it lands on the site's login page.
+  - sendRegistrationRejected already matched the re-confirmed copy verbatim
+    (subject "Update on your TSSOSA Alumni Platform registration", body with
+    "reach out directly to echopofii@gmail.com"); unchanged.
+- DELIVERY (Resend API GET /emails/<id>, read back after send; sandbox
+  delivers only to the account owner echopofii@gmail.com):
+  - Approve template a9dc2170-aeb9-4a41-85e0-c6b108c1fbbb:
+      last_event = "delivered"
+      subject    = "You're verified! Welcome to the TSSOSA Alumni Platform"
+      html/text  = spec copy incl. login button + link http://localhost:3001/login
+  - Reject template b848ff07-6c09-4523-a0fc-388b876ccf90:
+      last_event = "delivered"
+      subject    = "Update on your TSSOSA Alumni Platform registration"
+      html/text  = spec copy, contact renders echopofii@gmail.com
+  (Both routed via config.email.resendFrom default onboarding@resend.dev.)
+- REAL FLOW (fresh registrants, admin API, i.e. what the Approve/Reject buttons
+  do): register mailcheck.approve.e2e -> PATCH approve -> 200; user login now
+  200 (is_verified flips); register mailcheck.reject.e2e -> PATCH reject -> 200
+  "Registration rejected and removed". Backend log ordering for reject proves
+  email-before-delete (rejection email attempt logged on line BEFORE the
+  "[admin] rejected + deleted registration" line — send is AWAITED, then
+  user.delete cascades member/set_members/payments/refresh tokens). Approve
+  flips is_verified in the same transaction and fires the email alongside
+  (fire-and-forget but always logged). Test accounts removed afterwards —
+  mailcheck count in DB = 0.
+- SANDBOX CAVEAT (unchanged, documented): approve/reject mails to the TEST
+  recipients (mailcheck.*) hit Resend's expected 403 ("You can only send
+  testing emails to your own email address (echopofii@gmail.com). To send
+  emails to other recipients, please verify a domain at resend.com/domains…")
+  — logged loudly at the call site, never silent (log lines 6-11 above the
+  reject/delete lines in /tmp/opencode/backend.log). Only echopofii@gmail.com
+  can receive until a domain is verified + RESEND_FROM set; the identical
+  sendMail path then delivers to members (proven: same function yields
+  delivered status to the owner).
+- OBS: pending list is now EMPTY — the three real registrants (pofiifx,
+  pofiidollar, amosaaron83) are is_verified=true with consecutive row versions
+  (xmin 5988-5990) for records created hours apart, i.e. per-user verification
+  updates that do NOT correspond to any script of this pass (which only
+  touched mailcheck.*). They match the schema quirk User.updatedAt = @default
+  (no @updatedAt), so API approvals don't bump updated_at. Interpretation: the
+  pending registrants were approved through the panel itself (once reachable).
+  Left untouched — flagging rather than silently mutating user data.

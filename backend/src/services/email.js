@@ -105,13 +105,20 @@ async function sendRegistrationConfirmation(user) {
 }
 
 async function sendVerificationApproved(user) {
+  const loginUrl = `${config.frontendUrl}/login`;
   return sendMail({
     to: user.email,
-    subject: "You've been verified — you can now log in.",
+    subject: "You're verified! Welcome to the TSSOSA Alumni Platform",
     html: `
-      <h2>Welcome aboard, ${user.fullName}!</h2>
-      <p>An administrator has approved your alumni registration. You've been verified — you can now log in and complete your registration.</p>
-      <p>Need to pay the one-time registration fee? Sign in and head to your dashboard.</p>
+      <p>Hi ${user.fullName},</p>
+      <p>Good news — your registration has been reviewed and accepted. You're officially verified as a TSSOSA alumnus!</p>
+      <p>You can now log in using the email and password you registered with.</p>
+      <p style="margin:24px 0">
+        <a href="${loginUrl}" style="display:inline-block;padding:12px 24px;background:#0a7a3d;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;">Log in to the TSSOSA Alumni Platform</a>
+      </p>
+      <p>Or copy this link into your browser: <a href="${loginUrl}">${loginUrl}</a></p>
+      <p>We're glad to have you as part of the community.</p>
+      <p>Warm regards,<br/>TSSOSA Alumni Association</p>
     `,
   });
 }
