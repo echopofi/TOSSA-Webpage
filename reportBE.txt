@@ -360,11 +360,15 @@ after the change: Test Suites 10/10, Tests 113/113.
   can receive until a domain is verified + RESEND_FROM set; the identical
   sendMail path then delivers to members (proven: same function yields
   delivered status to the owner).
-- OBS: pending list is now EMPTY — the three real registrants (pofiifx,
-  pofiidollar, amosaaron83) are is_verified=true with consecutive row versions
-  (xmin 5988-5990) for records created hours apart, i.e. per-user verification
-  updates that do NOT correspond to any script of this pass (which only
-  touched mailcheck.*). They match the schema quirk User.updatedAt = @default
-  (no @updatedAt), so API approvals don't bump updated_at. Interpretation: the
-  pending registrants were approved through the panel itself (once reachable).
-  Left untouched — flagging rather than silently mutating user data.
+- OBS/flag: mid-task, the three real registrants were found is_verified=true
+  with consecutive row versions (xmin 5988-5990) for records created hours
+  apart — per-user verification updates that do NOT correspond to any script
+  of this pass (which only touched mailcheck.*). Matches the schema quirk
+  User.updatedAt = @default (no @updatedAt), so API approvals don't bump
+  updated_at. Interpretation: approved through the panel itself once reachable.
+  OWNER DECISION = restore to pending; done via Prisma for the three
+  (is_verified=false, members.is_active=false; echopofii admin remains
+  verified). Live API re-check: admin login 200, GET /admin/members/pending ->
+  3 (pofiifx "Pofi Fx" set 2021, amosaaron83 "Litcho Dev" set 2021,
+  pofiidollar "Shamisu Abu" set 2020). Panel now shows them awaiting approval
+  again.
