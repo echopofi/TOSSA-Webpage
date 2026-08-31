@@ -56,11 +56,8 @@ export default function Navbar({ variant = "public", userName }: NavbarProps) {
           </Link>
           {variant === "public" ? (
             <>
-              <Link href="/login" className="hover:text-[var(--primary)] transition-colors">
-                Sign in
-              </Link>
               <Button as="button" size="sm">
-                <Link href="/register">Join Now</Link>
+                <Link href="/register">Join</Link>
               </Button>
             </>
           ) : (
@@ -99,11 +96,8 @@ export default function Navbar({ variant = "public", userName }: NavbarProps) {
           </Link>
           {variant === "public" ? (
             <>
-              <Link href="/login" className="py-2 hover:text-[var(--primary)]" onClick={() => setOpen(false)}>
-                Sign in
-              </Link>
               <Link href="/register" onClick={() => setOpen(false)}>
-                <Button fullWidth>Join Now</Button>
+                <Button fullWidth>Join</Button>
               </Link>
             </>
           ) : (
