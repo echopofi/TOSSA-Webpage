@@ -408,12 +408,14 @@ function AuthCard() {
 
         .auth-notice {
           margin: 2px 0 10px;
-          color: var(--danger);
-          font-size: 13px;
+          color: #B91C1C;
+          font-size: 14px;
+          font-weight: 600;
           font-family: "Inter", sans-serif;
-          background: var(--danger-bg);
-          padding: 8px 12px;
+          background: #FECACA;
+          padding: 9px 12px;
           border-radius: 8px;
+          border: 1px solid #F87171;
           text-align: left;
         }
 
