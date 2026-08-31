@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useSyncExternalStore } from "react";
 import { Menu, X } from "lucide-react";
-import Button from "@/components/ui/Button";
 import { getCurrentUser } from "@/lib/session";
 
 interface NavbarProps {
@@ -56,9 +55,9 @@ export default function Navbar({ variant = "public", userName }: NavbarProps) {
           </Link>
           {variant === "public" ? (
             <>
-              <Button as="button" size="sm">
-                <Link href="/register">Join</Link>
-              </Button>
+              <Link href="/register" className="btn-primary text-sm px-5 py-2">
+                Join
+              </Link>
             </>
           ) : (
             <>
@@ -96,8 +95,12 @@ export default function Navbar({ variant = "public", userName }: NavbarProps) {
           </Link>
           {variant === "public" ? (
             <>
-              <Link href="/register" onClick={() => setOpen(false)}>
-                <Button fullWidth>Join</Button>
+              <Link
+                href="/register"
+                onClick={() => setOpen(false)}
+                className="btn-primary w-full justify-center py-2.5"
+              >
+                Join
               </Link>
             </>
           ) : (
