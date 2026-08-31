@@ -42,60 +42,25 @@ export const MOCK_ADMIN_USER: AuthUser = {
 
 // ─── Graduation Sets ──────────────────────────────────────────────────────────
 
-export const MOCK_SETS: GraduationSet[] = [
-  {
-    id: "set_2005",
-    set_name: "2005",
-    start_year: 2000,
-    end_year: 2005,
-    description:
-      "The Class of 2005 — affectionately known as 'The Vanguards' — graduated after one of the most memorable years in school history. We have grown into professionals across every sector, but the bonds forged within those classrooms and hostels remain unbroken.",
-    group_invite_link: "https://chat.whatsapp.com/mock_set_2005",
-    is_active: true,
-    member_count: 142,
-    created_at: "2023-01-15T08:00:00Z",
-    updated_at: "2025-01-10T08:00:00Z",
-  },
-  {
-    id: "set_2008",
-    set_name: "2008",
-    start_year: 2003,
-    end_year: 2008,
-    description:
-      "Class of 2008 — 'The Torchbearers.' A decade and a half later, we still carry the torch. Finance, tech, medicine, law — our set has done it all.",
-    group_invite_link: "https://chat.whatsapp.com/mock_set_2008",
-    is_active: true,
-    member_count: 118,
-    created_at: "2023-01-15T08:00:00Z",
-    updated_at: "2025-01-10T08:00:00Z",
-  },
-  {
-    id: "set_2012",
-    set_name: "2012",
-    start_year: 2007,
-    end_year: 2012,
-    description:
-      "Class of 2012 — the digital natives. We grew up with the internet and are now shaping it. Stay connected, pay dues, and keep the conversation going.",
-    group_invite_link: "https://chat.whatsapp.com/mock_set_2012",
-    is_active: true,
-    member_count: 203,
-    created_at: "2023-01-15T08:00:00Z",
-    updated_at: "2025-01-10T08:00:00Z",
-  },
-  {
-    id: "set_2015",
-    set_name: "2015",
-    start_year: 2010,
-    end_year: 2015,
-    description:
-      "Class of 2015 — young, driven, making noise. Our WhatsApp group has never gone quiet and neither have our ambitions.",
-    group_invite_link: "https://chat.whatsapp.com/mock_set_2015",
-    is_active: true,
-    member_count: 87,
-    created_at: "2023-06-01T08:00:00Z",
-    updated_at: "2025-01-10T08:00:00Z",
-  },
-];
+// Graduating sets 1997–2026 (fallback when the backend is unreachable, and the
+// selection shown on the home page). The real source of truth is the DB's
+// graduation_sets table via GET /api/sets — this mirrors that full range.
+const MOCK_SET_YEARS = Array.from({ length: 2026 - 1997 + 1 }, (_, i) => 1997 + i);
+
+export const MOCK_SETS: GraduationSet[] = MOCK_SET_YEARS.map((y) => ({
+  id: `set_${y}`,
+  set_name: String(y),
+  start_year: y - 4,
+  end_year: y,
+  description:
+    `The Class of ${y} — a proud chapter in our school's story. ` +
+    `We have grown into professionals across every sector, but the bonds forged in those classrooms and hostels remain unbroken.`,
+  group_invite_link: `https://chat.whatsapp.com/mock_set_${y}`,
+  is_active: true,
+  member_count: 0,
+  created_at: "2023-01-15T08:00:00Z",
+  updated_at: "2025-01-10T08:00:00Z",
+}));
 
 // ─── Members ──────────────────────────────────────────────────────────────────
 
