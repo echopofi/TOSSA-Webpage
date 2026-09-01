@@ -12,6 +12,7 @@ import { saveCurrentUser, saveAccessToken } from "@/lib/session";
 import { MOCK_SETS } from "@/lib/mockData";
 import type { GraduationSet } from "@/lib/types";
 import { EMAIL_REGEX, EMAIL_MAX, NAME_MAX, PASSWORD_MAX } from "@/lib/validation";
+import { motion } from "framer-motion";
 
 interface LoginForm {
   email: string;
@@ -175,7 +176,12 @@ function AuthCard() {
     <>
       <Navbar variant="public" />
       <main className="flex-1 flex items-center justify-center px-4 py-10">
-        <div className={`authcard ${active ? "active" : ""}`}>
+        <motion.div
+          initial={{ opacity: 0, y: 24, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
+          <div className={`authcard ${active ? "active" : ""}`}>
           {/* ── Login form ── */}
           <div className="form-box login">
             <form
@@ -307,6 +313,7 @@ function AuthCard() {
             </div>
           </div>
         </div>
+        </motion.div>
       </main>
 
       <style jsx global>{`

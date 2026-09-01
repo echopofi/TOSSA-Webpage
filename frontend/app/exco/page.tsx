@@ -5,6 +5,7 @@ import Card from "@/components/ui/Card";
 import { UsersRound, Shield, CalendarDays } from "lucide-react";
 import { apiGetExcoOfficers } from "@/lib/api";
 import type { ExcoOfficer } from "@/lib/types";
+import { Reveal, Stagger, StaggerItem, fadeUp } from "@/lib/motion";
 
 export default function ExcoPage() {
   const [officers, setOfficers] = useState<ExcoOfficer[]>([]);
@@ -29,7 +30,7 @@ export default function ExcoPage() {
   return (
     <div className="flex flex-col gap-8">
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4">
+      <Reveal variants={fadeUp} className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)]">
             Our Exco
@@ -41,43 +42,47 @@ export default function ExcoPage() {
         <div className="w-10 h-10 rounded-xl bg-[var(--primary-light)] text-[var(--primary)] flex items-center justify-center shrink-0">
           <UsersRound size={20} />
         </div>
-      </div>
+      </Reveal>
 
       {/* ── Current officers grid ──────────────────────────────────────────── */}
       {officers.length === 0 ? (
-        <Card className="text-center py-12 text-sm text-[var(--text-muted)] flex flex-col items-center gap-2">
-          <Shield size={28} className="text-[var(--text-muted)]" />
-          The executive committee for this session has not been announced yet.
-        </Card>
+        <Reveal>
+          <Card className="text-center py-12 text-sm text-[var(--text-muted)] flex flex-col items-center gap-2">
+            <Shield size={28} className="text-[var(--text-muted)]" />
+            The executive committee for this session has not been announced yet.
+          </Card>
+        </Reveal>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {officers.map((o) => (
-            <Card key={o.id} className="flex flex-col items-center text-center py-6">
-              {o.member.profile_image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={o.member.profile_image}
-                  alt={o.member.full_name}
-                  className="w-20 h-20 rounded-full object-cover border-[3px] border-[var(--primary)]"
-                />
-              ) : (
-                <div className="w-20 h-20 rounded-full bg-[var(--primary-light)] text-[var(--primary)] text-2xl font-bold flex items-center justify-center border-[3px] border-[var(--primary)]">
-                  {o.member.full_name[0]}
-                </div>
-              )}
-              <h2 className="mt-3 font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)]">
-                {o.position}
-              </h2>
-              <p className="text-sm text-[var(--text-body)] mt-0.5">{o.member.full_name}</p>
-              <p className="text-xs text-[var(--text-muted)] mt-1">
-                Class of {o.member.set_name ?? "—"}
-              </p>
-              <span className="pill pill-neutral text-[11px] mt-3 flex items-center gap-1">
-                <CalendarDays size={10} /> Term {o.term_label}
-              </span>
-            </Card>
+            <StaggerItem key={o.id}>
+              <Card className="flex flex-col items-center text-center py-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                {o.member.profile_image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={o.member.profile_image}
+                    alt={o.member.full_name}
+                    className="w-20 h-20 rounded-full object-cover border-[3px] border-[var(--primary)]"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full bg-[var(--primary-light)] text-[var(--primary)] text-2xl font-bold flex items-center justify-center border-[3px] border-[var(--primary)]">
+                    {o.member.full_name[0]}
+                  </div>
+                )}
+                <h2 className="mt-3 font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)]">
+                  {o.position}
+                </h2>
+                <p className="text-sm text-[var(--text-body)] mt-0.5">{o.member.full_name}</p>
+                <p className="text-xs text-[var(--text-muted)] mt-1">
+                  Class of {o.member.set_name ?? "—"}
+                </p>
+                <span className="pill pill-neutral text-[11px] mt-3 flex items-center gap-1">
+                  <CalendarDays size={10} /> Term {o.term_label}
+                </span>
+              </Card>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       )}
 
       {/* ── Note ───────────────────────────────────────────────────────────── */}
