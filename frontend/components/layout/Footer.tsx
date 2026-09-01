@@ -10,7 +10,7 @@ export default function Footer() {
             <span className="w-7 h-7 rounded-md bg-[var(--primary)] flex items-center justify-center">
               <GraduationCap size={16} />
             </span>
-            AlumniConnect
+            TSSOSA
           </div>
           <p className="text-sm text-white/60 leading-relaxed">
             Keeping the alumni family connected, one set at a time.
@@ -37,7 +37,7 @@ export default function Footer() {
       </div>
 
       <div className="border-t border-white/10 py-4 text-center text-xs text-white/35">
-        © {new Date().getFullYear()} AlumniConnect. All rights reserved.
+        © {new Date().getFullYear()} TSSOSA. All rights reserved.
       </div>
     </footer>
   );

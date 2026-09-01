@@ -52,12 +52,12 @@ export default function Sidebar({ isAdmin }: SidebarProps) {
         >
           <Image
             src="/assets/logo.jpeg"
-            alt="AlumniConnect logo"
+            alt="TSSOSA logo"
             width={32}
             height={32}
             className="rounded-lg object-cover"
           />
-          AlumniConnect
+          TSSOSA
         </Link>
       </div>
 
