@@ -4,8 +4,9 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import SetStrip from "@/components/home/SetStrip";
 import { MOCK_SETS } from "@/lib/mockData";
-import { GraduationCap, Users, CreditCard, MessageSquare, ArrowRight, CheckCircle } from "lucide-react";
+import { GraduationCap, CreditCard, MessageSquare, ArrowRight, CheckCircle } from "lucide-react";
 import { Reveal, Stagger, StaggerItem, fadeLeft, fadeRight, fadeUp, sheenClass } from "@/lib/motion";
 
 export default function HomePage() {
@@ -132,7 +133,7 @@ export default function HomePage() {
         {/* ── Sets spotlight ─────────────────────────────────────────────────── */}
         <section className="bg-[var(--surface-card)] border-y border-[var(--border-subtle)]">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16 md:py-20">
-            <Reveal className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 gap-4">
+            <Reveal className="mb-10">
               <div>
                 <h2 className="text-3xl md:text-4xl font-[family-name:var(--font-heading)] text-[var(--text-heading)]">
                   Our Sets
@@ -142,37 +143,18 @@ export default function HomePage() {
                   Each set is a chapter in our school&apos;s story.
                 </p>
               </div>
-              <Link
-                href="/sets"
-                className="text-sm font-semibold text-[var(--primary)] hover:underline flex items-center gap-1 shrink-0"
-              >
-                View all sets <ArrowRight size={15} />
-              </Link>
             </Reveal>
 
-            <Stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {MOCK_SETS.map((set) => (
-                <StaggerItem key={set.id}>
-                  <Link href={`/sets/${set.id}`} className="group block h-full">
-                    <div className={`card p-5 h-full flex flex-col gap-3 ${sheenClass}`}>
-                      {/* Coloured header band (spec v2 has no banner_url) */}
-                      <div className="h-24 rounded-lg bg-gradient-to-br from-[var(--primary)] to-[var(--primary-hover)] flex items-center justify-center overflow-hidden">
-                        <span className="text-3xl font-[family-name:var(--font-heading)] font-semibold text-white/90">
-                          {set.set_name}
-                        </span>
-                      </div>
-                      <h3 className="font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)] text-base">
-                        Class of {set.set_name}
-                      </h3>
-                      <div className="flex items-center gap-1 text-xs text-[var(--text-muted)] mt-auto">
-                        <Users size={13} />
-                        <span>{set.member_count} members</span>
-                      </div>
-                    </div>
-                  </Link>
-                </StaggerItem>
-              ))}
-            </Stagger>
+            <SetStrip sets={MOCK_SETS} />
+
+            <div className="mt-12 text-center">
+              <Link
+                href="/sets"
+                className="btn-primary text-base px-7 py-3 inline-flex items-center gap-2"
+              >
+                See all sets <ArrowRight size={18} />
+              </Link>
+            </div>
           </div>
         </section>
 

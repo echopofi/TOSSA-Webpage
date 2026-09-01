@@ -1,7 +1,7 @@
 "use client";
 
+import { Children, cloneElement, isValidElement, type ReactNode } from "react";
 import { motion, type Variants } from "framer-motion";
-import type { ReactNode } from "react";
 
 // ── Shared animation vocabulary ─────────────────────────────────────────────
 // Used across public pages so the motion feel stays consistent (like the
@@ -9,6 +9,11 @@ import type { ReactNode } from "react";
 // presentational — no logic or data is affected.
 
 export const VIEWPORT = { once: true, amount: 0.2 } as const;
+
+// Grid/stagger items observe *themselves* (each card is a small target) with a
+// zero threshold, so reveals fire reliably on phones where a tall single-column
+// container would otherwise never reach amount: 0.2 of the viewport.
+export const VIEWPORT_RELAXED = { once: true, amount: 0 } as const;
 
 export const fadeUp: Variants = {
   hidden: { opacity: 0, y: 28 },
@@ -33,14 +38,6 @@ export const fadeRight: Variants = {
 export const scaleIn: Variants = {
   hidden: { opacity: 0, scale: 0.92 },
   visible: { opacity: 1, scale: 1 },
-};
-
-// Parent/child stagger: parent sets the stagger delay, children inherit.
-export const staggerContainer: Variants = {
-  hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.12, delayChildren: 0.1 },
-  },
 };
 
 // ── Reusable wrappers ───────────────────────────────────────────────────────
@@ -68,33 +65,40 @@ export function Reveal({ children, className, variants = fadeUp, delay = 0 }: Re
   );
 }
 
-/** Container that staggers its <StaggerItem> children on scroll into view. */
+/** Container that staggers its <StaggerItem> children as they scroll into view. */
 export function Stagger({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <motion.div
-      className={className}
-      variants={staggerContainer}
-      initial="hidden"
-      whileInView="visible"
-      viewport={VIEWPORT}
-    >
-      {children}
-    </motion.div>
+    <div className={className}>
+      {Children.map(children, (child, i) =>
+        isValidElement<{ delay?: number }>(child)
+          ? cloneElement(child, { delay: (child.props.delay ?? 0) + Math.min(i, 8) * 0.1 })
+          : child,
+      )}
+    </div>
   );
 }
 
-/** Single item to be placed inside a <Stagger>. Inherits the parent's stagger. */
+/** Single item to be placed inside a <Stagger>. Observes itself as it scrolls in. */
 export function StaggerItem({
   children,
   className,
   variants = fadeUp,
+  delay = 0,
 }: {
   children: ReactNode;
   className?: string;
   variants?: Variants;
+  delay?: number;
 }) {
   return (
-    <motion.div className={className} variants={variants}>
+    <motion.div
+      className={className}
+      variants={variants}
+      initial="hidden"
+      whileInView="visible"
+      viewport={VIEWPORT_RELAXED}
+      transition={{ duration: 0.6, delay }}
+    >
       {children}
     </motion.div>
   );
