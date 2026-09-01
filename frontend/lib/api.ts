@@ -316,7 +316,7 @@ export async function apiMe(): Promise<ApiSuccess<AuthMeResponse>> {
             profileImage?: string | null;
             isActive?: boolean;
             joinedAt?: string;
-            sets?: Array<{ id: string; setName: string }>;
+            sets?: Array<{ id: string; setName: string; roleInSet?: string | null }>;
           };
         }
       | undefined;
@@ -338,6 +338,7 @@ export async function apiMe(): Promise<ApiSuccess<AuthMeResponse>> {
         user_id: u.id,
         full_name: u.fullName,
         email: u.email,
+        matric_number: json?.member?.matricNumber ?? undefined,
         gender: json?.member?.gender ?? undefined,
         phone: json?.member?.phone ?? undefined,
         address: json?.member?.address ?? undefined,
@@ -347,6 +348,7 @@ export async function apiMe(): Promise<ApiSuccess<AuthMeResponse>> {
         joined_at: json?.member?.joinedAt ?? new Date().toISOString(),
         set_id: firstSet?.id,
         set_name: firstSet?.setName,
+        role_in_set: firstSet?.roleInSet ?? undefined,
       },
       set: firstSet
         ? {
@@ -457,6 +459,7 @@ export async function apiUpdateProfile(payload: {
   address?: string;
   bio?: string;
   profileImage?: string;
+  matricNumber?: string;
 }): Promise<ApiSuccess<{ user: AuthUser; member: Member }>> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   if (!apiUrl || !getAccessToken()) {
@@ -466,11 +469,51 @@ export async function apiUpdateProfile(payload: {
     method: "PATCH",
     body: JSON.stringify(payload),
   });
-  const json = (await res.json()) as { user?: AuthUser; member?: Member };
-  if (!json.user) {
+  // Backend returns camelCase — normalise into the shared snake_case types so
+  // callers can read .user.full_name / .member.profile_image directly.
+  const json = (await res.json()) as
+    | {
+        user?: { id?: string; email?: string; fullName?: string; role?: string };
+        member?: {
+          id?: string;
+          matricNumber?: string | null;
+          gender?: string | null;
+          phone?: string | null;
+          address?: string | null;
+          bio?: string | null;
+          profileImage?: string | null;
+        };
+      }
+    | undefined;
+  const u = json?.user;
+  if (!u) {
     throw new ApiRequestError(0, "Unexpected server response. Please try again.");
   }
-  return ok({ user: json.user, member: json.member as Member });
+  const m = json?.member;
+  const member: Member = {
+    id: m?.id ?? "",
+    user_id: u.id ?? "",
+    full_name: u.fullName ?? "",
+    email: u.email ?? "",
+    matric_number: m?.matricNumber ?? undefined,
+    gender: m?.gender ?? undefined,
+    phone: m?.phone ?? undefined,
+    address: m?.address ?? undefined,
+    bio: m?.bio ?? undefined,
+    profile_image: m?.profileImage ?? undefined,
+    is_active: true,
+    joined_at: new Date().toISOString(),
+  };
+  return ok({
+    user: {
+      id: u.id ?? "",
+      full_name: u.fullName ?? "",
+      email: u.email ?? "",
+      role: u.role === "admin" ? "admin" : "member",
+      is_verified: true,
+    },
+    member,
+  });
 }
 
 /** PATCH /api/auth/password — requires the current password; revokes other sessions. */
@@ -555,9 +598,19 @@ export async function apiUpdateMember(
 /** GET /api/sets — public, includes member_count */
 export async function apiGetSets(): Promise<ApiSuccess<GraduationSet[]>> {
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sets`);
-  const json = await res.json();
+  interface SetsEntry {
+    id: string;
+    setName: string;
+    startYear: number;
+    endYear: number;
+    description?: string | null;
+    groupInviteLink?: string | null;
+    memberCount?: number;
+    createdAt: string;
+  }
+  const json = (await res.json()) as { sets?: SetsEntry[] } | undefined;
   // Backend returns { sets: [...] } — normalise to { success, data }
-  const sets: GraduationSet[] = (json.sets ?? []).map((s: any) => ({
+  const sets: GraduationSet[] = (json?.sets ?? []).map((s) => ({
     id:               s.id,
     set_name:         s.setName,
     start_year:       s.startYear,
