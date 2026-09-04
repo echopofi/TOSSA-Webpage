@@ -68,6 +68,7 @@ export interface Member {
   gender?: string;
   address?: string;
   matric_number?: string;
+  occupation?: string; // student | unemployed | employed | prefer_not_to_say
   bio?: string;
   profile_image?: string;     // Cloudinary URL — was avatar_url in v1
   is_active: boolean;

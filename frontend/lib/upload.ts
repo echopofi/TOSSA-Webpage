@@ -49,9 +49,15 @@ export function fileToResizedDataUrl(file: File): Promise<string> {
 
 /**
  * Upload a photo and return a URL to store on the member/photocard.
- * Real path: signed Cloudinary upload. If Cloudinary is not configured yet
- * (invalid cloud name), fall back to the resized data URL with a warning so
- * registration and the ID card keep working end-to-end.
+ * Real path (NEXT_PUBLIC_API_URL set): signed Cloudinary upload, and the short
+ * secure_url is what gets saved. We deliberately DO NOT fall back to a base64
+ * data URL in real-backend mode — a data URL is far larger than the backend's
+ * 2000-char profile-image cap (saving would fail with "Profile image is too
+ * long") and it wouldn't render on the ID card. If Cloudinary can't be reached
+ * the upload throws so the user sees the real error instead.
+ *
+ * Only in pure mock mode (no backend) do we return a resized data URL, since
+ * there is no server to save against and the local ID card still works.
  */
 export async function uploadMemberPhoto(file: File): Promise<string> {
   if (!isRealBackend()) {
@@ -59,29 +65,22 @@ export async function uploadMemberPhoto(file: File): Promise<string> {
   }
 
   // Real path: signed Cloudinary upload.
-  try {
-    const sigRes = await apiGetCloudinarySignature("members");
-    const sig = sigRes.data;
-    const form = new FormData();
-    form.append("file", file);
-    form.append("api_key", sig.apiKey);
-    form.append("timestamp", String(sig.timestamp));
-    form.append("signature", sig.signature);
-    form.append("folder", sig.folder);
+  const sigRes = await apiGetCloudinarySignature("members");
+  const sig = sigRes.data;
+  const form = new FormData();
+  form.append("file", file);
+  form.append("api_key", sig.apiKey);
+  form.append("timestamp", String(sig.timestamp));
+  form.append("signature", sig.signature);
+  form.append("folder", sig.folder);
 
-    const res = await fetch(
-      `https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`,
-      { method: "POST", body: form }
-    );
-    const json = await res.json();
-    if (!res.ok || !json.secure_url) {
-      throw new Error(json.error?.message ?? "Image upload failed");
-    }
-    return json.secure_url as string;
-  } catch (err) {
-    console.warn(
-      "Cloudinary upload unavailable (" + (err instanceof Error ? err.message : "error") + ") — falling back to a local data URL."
-    );
-    return fileToResizedDataUrl(file);
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`,
+    { method: "POST", body: form }
+  );
+  const json = await res.json();
+  if (!res.ok || !json.secure_url) {
+    throw new Error(json.error?.message ?? "Image upload failed");
   }
+  return json.secure_url as string;
 }

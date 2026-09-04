@@ -61,7 +61,6 @@ import {
   MOCK_DUES_PAYMENTS,
   MOCK_DUES_SUMMARY,
   MOCK_ANNOUNCEMENTS,
-  MOCK_ADMIN_DASHBOARD,
   MOCK_MILESTONES,
   MOCK_ELECTION_POSITIONS,
   MOCK_ELECTION_APPLICATIONS,
@@ -309,6 +308,7 @@ export async function apiMe(): Promise<ApiSuccess<AuthMeResponse>> {
           member?: {
             id: string;
             matricNumber?: string | null;
+            occupation?: string | null;
             gender?: string | null;
             phone?: string | null;
             address?: string | null;
@@ -339,6 +339,7 @@ export async function apiMe(): Promise<ApiSuccess<AuthMeResponse>> {
         full_name: u.fullName,
         email: u.email,
         matric_number: json?.member?.matricNumber ?? undefined,
+        occupation: json?.member?.occupation ?? undefined,
         gender: json?.member?.gender ?? undefined,
         phone: json?.member?.phone ?? undefined,
         address: json?.member?.address ?? undefined,
@@ -460,6 +461,7 @@ export async function apiUpdateProfile(payload: {
   bio?: string;
   profileImage?: string;
   matricNumber?: string;
+  occupation?: string;
 }): Promise<ApiSuccess<{ user: AuthUser; member: Member }>> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   if (!apiUrl || !getAccessToken()) {
@@ -477,6 +479,7 @@ export async function apiUpdateProfile(payload: {
         member?: {
           id?: string;
           matricNumber?: string | null;
+          occupation?: string | null;
           gender?: string | null;
           phone?: string | null;
           address?: string | null;
@@ -496,6 +499,7 @@ export async function apiUpdateProfile(payload: {
     full_name: u.fullName ?? "",
     email: u.email ?? "",
     matric_number: m?.matricNumber ?? undefined,
+    occupation: m?.occupation ?? undefined,
     gender: m?.gender ?? undefined,
     phone: m?.phone ?? undefined,
     address: m?.address ?? undefined,
@@ -973,8 +977,31 @@ export async function apiAdminEndOfficerTerm(
 
 /** GET /api/admin/dashboard — was /api/admin/stats in v1 */
 export async function apiGetAdminDashboard(): Promise<ApiSuccess<AdminDashboard>> {
-  await delay();
-  return ok(MOCK_ADMIN_DASHBOARD);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl || !getAccessToken()) {
+    throw new ApiRequestError(0, "Admin dashboard requires the backend. Please sign in again.");
+  }
+  const res = await authedFetch("/api/admin/dashboard");
+  const json = (await res.json()) as
+    | {
+        totalMembers?: number;
+        activeMembers?: number;
+        totalSets?: number;
+        pendingPayments?: number;
+        totalDuesCollected?: number;
+        totalRegistrationPayments?: number;
+      }
+    | undefined;
+  // Backend returns camelCase — normalise into the shared snake_case shape the
+  // admin page renders. Never fall back to mock values here.
+  return ok({
+    total_members: json?.totalMembers ?? 0,
+    active_members: json?.activeMembers ?? 0,
+    total_sets: json?.totalSets ?? 0,
+    pending_payments: json?.pendingPayments ?? 0,
+    total_dues_collected: json?.totalDuesCollected ?? 0,
+    total_registration_payments: json?.totalRegistrationPayments ?? 0,
+  });
 }
 
 // ─── Admin (pending member approvals) ─────────────────────────────────────────

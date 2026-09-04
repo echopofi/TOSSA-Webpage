@@ -289,6 +289,45 @@ describe('PATCH /api/auth/me', () => {
     expect(res.status).toBe(400);
   });
 
+  it('updates and persists the member occupation', async () => {
+    const token = generateAccessToken(data.memberUser);
+    const res = await request(app)
+      .patch('/api/auth/me')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ occupation: 'employed' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.member.occupation).toBe('employed');
+
+    const persisted = await prisma.member.findUnique({ where: { userId: data.memberUser.id } });
+    expect(persisted.occupation).toBe('employed');
+
+    // Restore seed state for later tests
+    await prisma.member.update({
+      where: { id: persisted.id },
+      data: { occupation: null },
+    });
+  });
+
+  it('rejects an invalid occupation value', async () => {
+    const token = generateAccessToken(data.memberUser);
+    const res = await request(app)
+      .patch('/api/auth/me')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ occupation: 'billionaire' });
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects a base64 data-URL profile image (must be a Cloudinary URL)', async () => {
+    const token = generateAccessToken(data.memberUser);
+    const res = await request(app)
+      .patch('/api/auth/me')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ profileImage: `data:image/jpeg;base64,${'A'.repeat(5000)}` });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Profile image must be an uploaded photo URL');
+  });
+
   it('rejects an unauthenticated request', async () => {
     const res = await request(app).patch('/api/auth/me').send({ fullName: 'X' });
     expect(res.status).toBe(401);

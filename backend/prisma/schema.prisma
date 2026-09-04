@@ -41,6 +41,7 @@ model Member {
   id            String   @id @default(uuid()) @db.Uuid
   userId        String   @unique @map("user_id") @db.Uuid
   matricNumber  String?  @unique @map("matric_number") @db.VarChar(50)
+  occupation    String?  @db.VarChar(30)
   gender        String?  @db.VarChar(20)
   phone         String?  @db.VarChar(30)
   address       String?  @db.Text()

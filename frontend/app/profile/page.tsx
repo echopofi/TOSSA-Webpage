@@ -19,7 +19,6 @@ import {
   AlertCircle,
   Camera,
   CalendarDays,
-  IdCard,
   ArrowRight,
   LoaderCircle,
 } from "lucide-react";
@@ -40,7 +39,7 @@ interface ProfileForm {
   fullName: string;
   gender: string;
   phone: string;
-  matricNumber: string;
+  occupation: string;
   address: string;
   bio: string;
 }
@@ -78,7 +77,7 @@ export default function ProfilePage() {
           fullName: res.data.user.full_name,
           gender: m.gender ? m.gender.charAt(0).toUpperCase() + m.gender.slice(1) : "",
           phone: m.phone ?? "",
-          matricNumber: m.matric_number ?? "",
+          occupation: m.occupation ?? "",
           address: m.address ?? "",
           bio: m.bio ?? "",
         });
@@ -106,7 +105,7 @@ export default function ProfilePage() {
             fullName: session.full_name,
             gender: session.gender ?? "",
             phone: session.phone ?? "",
-            matricNumber: "",
+            occupation: "",
             address: session.address ?? "",
             bio: session.bio ?? "",
           });
@@ -146,7 +145,7 @@ export default function ProfilePage() {
         fullName: data.fullName.trim(),
         gender: data.gender || undefined,
         phone: data.phone.trim() || undefined,
-        matricNumber: data.matricNumber.trim() || undefined,
+        occupation: data.occupation || undefined,
         address: data.address.trim() || undefined,
         bio: data.bio.trim() || undefined,
         profileImage: photo || undefined,
@@ -169,6 +168,7 @@ export default function ProfilePage() {
         set_name: prev?.set_name,
         role_in_set: prev?.role_in_set,
         matric_number: updated.member.matric_number,
+        occupation: updated.member.occupation,
       }));
       saveCurrentUser({
         full_name: updated.user.full_name,
@@ -335,10 +335,12 @@ export default function ProfilePage() {
                     <span className="truncate text-xs">{member.address}</span>
                   </div>
                 )}
-                {member.matric_number && (
+                {member.occupation && (
                   <div className="flex items-center gap-2 text-[var(--text-muted)]">
-                    <IdCard size={14} className="shrink-0" />
-                    <span className="truncate text-xs">{member.matric_number}</span>
+                    <UserCircle2 size={14} className="shrink-0" />
+                    <span className="truncate text-xs capitalize">
+                      {member.occupation.replace(/_/g, " ")}
+                    </span>
                   </div>
                 )}
               </div>
@@ -414,11 +416,16 @@ export default function ProfilePage() {
                     })}
                   />
                 </div>
-                <Input
-                  label="Matric number"
-                  placeholder="Optional — e.g. 2015/12345"
-                  error={profileForm.formState.errors.matricNumber?.message}
-                  {...profileForm.register("matricNumber")}
+                <Select
+                  label="Current occupation"
+                  placeholder="Select your occupation"
+                  options={[
+                    { value: "student", label: "Student" },
+                    { value: "unemployed", label: "Unemployed" },
+                    { value: "employed", label: "Employed" },
+                    { value: "prefer_not_to_say", label: "Prefer not to say" },
+                  ]}
+                  {...profileForm.register("occupation")}
                 />
                 <Input
                   label="Address"

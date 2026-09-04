@@ -3,7 +3,8 @@ const prisma = require('../config/prisma');
 // GET /api/admin/dashboard
 async function getDashboard(req, res) {
   try {
-    const [totalMembers, totalSets, recentPayments, activeCycleStats] = await Promise.all([
+    const [totalMembers, activeMembers, totalSets, recentPayments, activeCycleStats, pendingRegPayments, pendingDuesPayments, duesCollected, regCollected] = await Promise.all([
+      prisma.member.count(),
       prisma.member.count({ where: { isActive: true } }),
       prisma.graduationSet.count({ where: { isActive: true } }),
       prisma.payment.findMany({
@@ -22,11 +23,27 @@ async function getDashboard(req, res) {
         },
         orderBy: { endDate: 'desc' },
       }),
+      prisma.payment.count({ where: { status: 'pending' } }),
+      prisma.duesPayment.count({ where: { status: 'pending' } }),
+      prisma.duesPayment.aggregate({
+        where: { status: 'success' },
+        _sum: { amountPaid: true },
+      }),
+      prisma.payment.aggregate({
+        where: { paymentType: 'registration_fee', status: 'success' },
+        _sum: { amount: true },
+      }),
     ]);
 
     res.json({
       totalMembers,
+      activeMembers,
       totalSets,
+      // Registration payment amounts are stored in kobo (config.registrationFeeAmount * 100)
+      // — return naira like the other aggregates so the UI displays ₦ values directly.
+      pendingPayments: pendingRegPayments + pendingDuesPayments,
+      totalDuesCollected: duesCollected._sum.amountPaid ?? 0,
+      totalRegistrationPayments: Math.round((regCollected._sum.amount ?? 0) / 100),
       recentPayments: recentPayments.map((r) => ({
         id: r.id,
         paymentType: r.paymentType,

@@ -181,15 +181,22 @@ export default function AdminPage() {
 
   useEffect(() => {
     (async () => {
-      const [sRes, aRes, setRes] = await Promise.all([
-        apiGetAdminDashboard(),   // spec v2: /api/admin/dashboard (not /api/admin/stats)
-        apiGetAnnouncements(),
-        apiGetSets(),
-      ]);
-      setStats(sRes.data);
-      setAnnouncements(aRes.data);
-      setSets(setRes.data);
-      setLoading(false);
+      try {
+        const [sRes, aRes, setRes] = await Promise.all([
+          apiGetAdminDashboard(),   // spec v2: /api/admin/dashboard (not /api/admin/stats)
+          apiGetAnnouncements(),
+          apiGetSets(),
+        ]);
+        setStats(sRes.data);
+        setAnnouncements(aRes.data);
+        setSets(setRes.data);
+      } catch {
+        setStats(null);
+        setAnnouncements([]);
+        setSets([]);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 

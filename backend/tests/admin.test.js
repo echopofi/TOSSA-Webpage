@@ -77,6 +77,10 @@ describe('GET /api/admin/dashboard', () => {
     expect(res.status).toBe(200);
     expect(res.body.totalMembers).toBe(2);
     expect(res.body.totalSets).toBe(2);
+    expect(res.body.activeMembers).toBe(2);
+    expect(res.body.pendingPayments).toBe(0);
+    expect(res.body.totalDuesCollected).toBe(0);
+    expect(res.body.totalRegistrationPayments).toBe(0);
     expect(Array.isArray(res.body.recentPayments)).toBe(true);
     expect(Array.isArray(res.body.activeDuesCycles)).toBe(true);
   });
