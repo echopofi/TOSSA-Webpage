@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
-import { clearCurrentUser, getCurrentUser } from "@/lib/session";
+import { usePathname } from "next/navigation";
+import { getCurrentUser } from "@/lib/session";
 import {
   LayoutDashboard,
   Users,
@@ -13,7 +13,6 @@ import {
   Vote,
   Shield,
   Settings,
-  LogOut,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -34,13 +33,7 @@ interface SidebarProps {
 
 export default function Sidebar({ isAdmin }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const isAdminUser = isAdmin === true || getCurrentUser()?.role === "admin";
-
-  function handleSignOut() {
-    clearCurrentUser();
-    router.push("/login");
-  }
 
   return (
     <aside className="w-60 shrink-0 hidden md:flex flex-col bg-[var(--surface-card)] border-r border-[var(--border-subtle)] min-h-screen">
@@ -84,17 +77,6 @@ export default function Sidebar({ isAdmin }: SidebarProps) {
             );
           })}
       </nav>
-
-      {/* Logout */}
-      <div className="px-3 py-4 border-t border-[var(--border-subtle)]">
-        <button
-          onClick={handleSignOut}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger-bg)] w-full transition-colors"
-        >
-          <LogOut size={18} />
-          Sign Out
-        </button>
-      </div>
     </aside>
   );
 }
