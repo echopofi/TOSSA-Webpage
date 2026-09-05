@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useForm } from "react-hook-form";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { GraduationCap, User, Lock, Mail } from "lucide-react";
+import { GraduationCap, User, Lock, Mail, Eye, EyeOff } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { apiLogin, apiRegister, ApiRequestError, apiGetSets } from "@/lib/api";
@@ -44,6 +44,8 @@ function AuthCard() {
   const [regError, setRegError] = useState("");
   const [sets, setSets] = useState<GraduationSet[]>([]);
   const [received, setReceived] = useState(false);
+  const [showLoginPw, setShowLoginPw] = useState(false);
+  const [showRegisterPw, setShowRegisterPw] = useState(false);
   useEffect(() => {
     let activeFlag = true;
     apiGetSets()
@@ -203,9 +205,9 @@ function AuthCard() {
                 />
                 <Mail size={20} />
               </div>
-              <div className="input-box">
+              <div className="input-box with-password">
                 <input
-                  type="password"
+                  type={showLoginPw ? "text" : "password"}
                   placeholder="Password"
                   autoComplete="current-password"
                   {...loginForm.register("password", {
@@ -214,6 +216,15 @@ function AuthCard() {
                   })}
                 />
                 <Lock size={20} />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowLoginPw((v) => !v)}
+                  aria-label={showLoginPw ? "Hide password" : "Show password"}
+                  aria-pressed={showLoginPw}
+                >
+                  {showLoginPw ? <Eye size={20} /> : <EyeOff size={20} />}
+                </button>
               </div>
               {notice && (
                 <p className={`auth-notice ${loading === "login" ? "" : ""}`}>{notice}</p>
@@ -257,9 +268,9 @@ function AuthCard() {
                 />
                 <Mail size={20} />
               </div>
-              <div className="input-box">
+              <div className="input-box with-password">
                 <input
-                  type="password"
+                  type={showRegisterPw ? "text" : "password"}
                   placeholder="Password"
                   autoComplete="new-password"
                   {...registerForm.register("password", {
@@ -269,6 +280,15 @@ function AuthCard() {
                   })}
                 />
                 <Lock size={20} />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowRegisterPw((v) => !v)}
+                  aria-label={showRegisterPw ? "Hide password" : "Show password"}
+                  aria-pressed={showRegisterPw}
+                >
+                  {showRegisterPw ? <Eye size={20} /> : <EyeOff size={20} />}
+                </button>
               </div>
               <div className="input-box">
                 <select
@@ -410,6 +430,30 @@ function AuthCard() {
           transform: translateY(-50%);
           font-size: 20px;
           color: var(--text-muted);
+          pointer-events: none;
+        }
+        .input-box.with-password input { padding-right: 92px; }
+        .input-box .password-toggle {
+          position: absolute;
+          right: 48px;
+          top: 50%;
+          transform: translateY(-50%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 6px;
+          margin: 0;
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: var(--text-muted);
+        }
+        .input-box .password-toggle:hover { color: var(--text-heading); }
+        .input-box .password-toggle svg {
+          position: static;
+          right: auto;
+          top: auto;
+          transform: none;
           pointer-events: none;
         }
 

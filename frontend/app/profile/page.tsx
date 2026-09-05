@@ -417,8 +417,8 @@ export default function ProfilePage() {
                   />
                 </div>
                 <Select
-                  label="Current occupation"
-                  placeholder="Select your occupation"
+                  label="Occupation Status"
+                  placeholder="Select your occupation status"
                   options={[
                     { value: "student", label: "Student" },
                     { value: "unemployed", label: "Unemployed" },
