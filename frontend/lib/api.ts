@@ -563,8 +563,54 @@ export async function apiGetMembers(
   return ok({ data: slice, total: results.length, limit, offset });
 }
 
-/** GET /api/members/:id */
+/** GET /api/members/:id — authenticated; email/phone PII included on auth responses */
 export async function apiGetMember(id: string): Promise<ApiSuccess<Member>> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (apiUrl && getAccessToken()) {
+    const res = await authedFetch(`/api/members/${id}`);
+    const json = (await res.json()) as
+      | {
+          id?: string;
+          fullName?: string;
+          email?: string | null;
+          matricNumber?: string | null;
+          occupation?: string | null;
+          gender?: string | null;
+          phone?: string | null;
+          address?: string | null;
+          bio?: string | null;
+          profileImage?: string | null;
+          isActive?: boolean;
+          joinedAt?: string;
+          sets?: Array<{ id: string; setName: string; roleInSet?: string | null }>;
+        }
+      | undefined;
+    if (!json || !json.id || !json.fullName) {
+      throw new ApiRequestError(0, "Unexpected server response. Please try again.");
+    }
+    // Backend returns camelCase — normalise into the shared snake_case Member shape.
+    const firstSet = Array.isArray(json.sets) ? json.sets[0] : undefined;
+    return ok({
+      id: json.id,
+      user_id: "", // not returned by the detail endpoint
+      full_name: json.fullName,
+      email: json.email ?? undefined,
+      matric_number: json.matricNumber ?? undefined,
+      occupation: json.occupation ?? undefined,
+      gender: json.gender ?? undefined,
+      phone: json.phone ?? undefined,
+      address: json.address ?? undefined,
+      bio: json.bio ?? undefined,
+      profile_image: json.profileImage ?? undefined,
+      is_active: json.isActive ?? true,
+      joined_at: json.joinedAt ?? new Date().toISOString(),
+      set_id: firstSet?.id,
+      set_name: firstSet?.setName,
+      role_in_set: firstSet?.roleInSet ?? undefined,
+    });
+  }
+
+  // Non-real-backend fallback: best-effort match, else first mock member
   await delay();
   const member = MOCK_MEMBERS.find((m) => m.id === id) ?? MOCK_MEMBERS[0];
   return ok(member);

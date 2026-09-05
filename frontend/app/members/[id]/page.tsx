@@ -103,28 +103,33 @@ export default function MemberProfilePage({
   const [milestones, setMilestones] = useState<AnyMilestone[]>([]);
   const [milestonesAuto, setMilestonesAuto] = useState(false);
   const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
-      // Fetch member + milestones in parallel
-      const [mRes, msRes] = await Promise.all([
-        apiGetMember(id),
-        apiGetMilestones(id),
-      ]);
+      try {
+        // Fetch member + milestones in parallel
+        const [mRes, msRes] = await Promise.all([
+          apiGetMember(id),
+          apiGetMilestones(id),
+        ]);
 
-      const m = mRes.data;
-      setMember(m);
+        const m = mRes.data;
+        setMember(m);
 
-      // Spec: if no milestones exist, fall back to auto-generated default
-      if (msRes.data.length > 0) {
-        setMilestones(msRes.data as AnyMilestone[]);
-        setMilestonesAuto(false);
-      } else {
-        setMilestones(buildAutoTimeline(m));
-        setMilestonesAuto(true);
+        // Spec: if no milestones exist, fall back to auto-generated default
+        if (msRes.data.length > 0) {
+          setMilestones(msRes.data as AnyMilestone[]);
+          setMilestonesAuto(false);
+        } else {
+          setMilestones(buildAutoTimeline(m));
+          setMilestonesAuto(true);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load profile.");
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     })();
   }, [id]);
 
@@ -135,6 +140,26 @@ export default function MemberProfilePage({
         <div className="flex items-center justify-center py-32">
           <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
         </div>
+        <Footer />
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <Navbar variant="public" />
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
+          <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
+            <p className="text-[var(--text-muted)]">{error}</p>
+            <Link
+              href="/dashboard"
+              className="text-sm text-[var(--primary)] hover:underline"
+            >
+              Back to dashboard
+            </Link>
+          </div>
+        </main>
         <Footer />
       </>
     );
