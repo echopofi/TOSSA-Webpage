@@ -18,7 +18,7 @@ import {
   User,
 } from "lucide-react";
 import { apiGetMember, apiGetMilestones } from "@/lib/api";
-import type { Member, MemberMilestone, AutoMilestone, AnyMilestone } from "@/lib/types";
+import type { Member, AutoMilestone, AnyMilestone } from "@/lib/types";
 import { formatDate, initials } from "@/lib/utils";
 import { use } from "react";
 
@@ -283,15 +283,15 @@ export default function MemberProfilePage({
             {/* Journey timeline */}
             <Timeline milestones={milestones} isAuto={milestonesAuto} />
 
-            {/* Gallery placeholder — spec v2 has no /gallery endpoint */}
-            {/* If a gallery feature is added to the spec, wire it up here */}
-            <Card className="border-dashed opacity-60">
-              <div className="flex flex-col items-center gap-2 py-6 text-center">
+            {/* Gallery — coming soon */}
+            <Card>
+              <h2 className="text-base font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)] mb-3 flex items-center gap-2">
+                <Camera size={17} className="text-[var(--primary)]" />
+                Gallery
+              </h2>
+              <div className="flex flex-col items-center gap-2 py-6 text-center border border-dashed border-[var(--border-subtle)] rounded-xl">
                 <Camera size={24} className="text-[var(--text-muted)]" />
-                <p className="text-sm font-medium text-[var(--text-muted)]">Photo gallery</p>
-                <p className="text-xs text-[var(--text-muted)]">
-                  No gallery endpoint in spec v2 — placeholder for future feature.
-                </p>
+                <p className="text-sm font-medium text-[var(--text-muted)]">Coming soon</p>
               </div>
             </Card>
           </div>
