@@ -44,11 +44,20 @@ export default function SetsPage() {
               <StaggerItem key={set.id}>
                 <Link href={`/sets/${set.id}`} className="group block h-full">
                   <div className={`card h-full flex flex-col overflow-hidden ${sheenClass}`}>
-                    {/* Coloured header band in place of banner (no banner_url in spec v2) */}
+                    {/* Cover image, falling back to a coloured band when none is set */}
                     <div className="h-28 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-hover)] flex items-center justify-center overflow-hidden">
-                      <span className="text-4xl font-[family-name:var(--font-heading)] font-semibold text-white/90">
-                        {set.set_name}
-                      </span>
+                      {set.cover_image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={set.cover_image}
+                          alt={`Class of ${set.set_name}`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-4xl font-[family-name:var(--font-heading)] font-semibold text-white/90">
+                          {set.set_name}
+                        </span>
+                      )}
                     </div>
                     {/* Content */}
                     <div className="p-5 flex flex-col flex-1">

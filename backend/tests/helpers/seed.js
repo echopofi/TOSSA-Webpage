@@ -5,6 +5,7 @@ const config = require('../../src/config');
 
 async function seedTestData() {
   // Clean all tables (order matters for FK constraints)
+  await prisma.setImage.deleteMany();
   await prisma.paymentTransaction.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.duesPayment.deleteMany();

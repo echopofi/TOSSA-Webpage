@@ -53,54 +53,102 @@ export default function SetPage({ params }: { params: Promise<{ id: string }> })
       <Navbar variant="public" />
 
       <main>
-        {/* ── Hero banner ─────────────────────────────────────────────────── */}
-        <section className="relative h-52 md:h-72 overflow-hidden bg-[var(--text-heading)]">
-          <div className="relative max-w-6xl mx-auto px-4 sm:px-6 h-full flex flex-col justify-end pb-8">
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.12 } } }}
-            >
-              <motion.p variants={fadeUp} className="text-white/50 text-sm mb-1">
-                Graduating Set
-              </motion.p>
-              <motion.h1
-                variants={fadeUp}
-                className="text-3xl md:text-5xl font-[family-name:var(--font-heading)] font-semibold text-white"
+        {/* ── Intro: cover image (left) + write-up (right) ─────────────────── */}
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 md:gap-10 items-start">
+            {/* Cover image — contained, left column */}
+            <div className="md:col-span-2">
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.12 } } }}
               >
-                Class of {set.set_name}
-              </motion.h1>
-              <motion.div variants={fadeUp} className="flex items-center gap-4 mt-3 flex-wrap">
-                <span className="flex items-center gap-1.5 text-white/70 text-sm">
-                  <Users size={15} />
-                  {set.member_count ?? members.length} members
-                </span>
-                {set.start_year && set.end_year && (
-                  <span className="text-white/50 text-sm">
-                    {set.start_year} – {set.end_year}
+                <motion.div
+                  variants={fadeUp}
+                  className="rounded-xl overflow-hidden border border-[var(--border-subtle)] shadow-[var(--shadow-card)] aspect-[4/3] bg-gradient-to-br from-[var(--primary)] to-[var(--primary-hover)]"
+                >
+                  {set.cover_image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={set.cover_image}
+                      alt={`Class of ${set.set_name}`}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="text-5xl font-semibold text-white/90 font-[family-name:var(--font-heading)]">
+                        {set.set_name}
+                      </span>
+                    </div>
+                  )}
+                </motion.div>
+              </motion.div>
+            </div>
+
+            {/* Write-up — right column */}
+            <div className="md:col-span-3">
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.12 } } }}
+              >
+                <motion.p variants={fadeUp} className="text-[var(--primary)] uppercase tracking-wide text-xs font-semibold mb-1">
+                  Graduating Set
+                </motion.p>
+                <motion.h1
+                  variants={fadeUp}
+                  className="text-3xl md:text-5xl font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)]"
+                >
+                  Class of {set.set_name}
+                </motion.h1>
+                <motion.div variants={fadeUp} className="flex items-center gap-4 mt-3 flex-wrap">
+                  <span className="flex items-center gap-1.5 text-[var(--text-muted)] text-sm">
+                    <Users size={15} />
+                    {set.member_count ?? members.length} members
                   </span>
+                  {set.start_year && set.end_year && (
+                    <span className="text-[var(--text-muted)] text-sm">
+                      {set.start_year} – {set.end_year}
+                    </span>
+                  )}
+                </motion.div>
+                {set.description && (
+                  <motion.p variants={fadeUp} className="text-[var(--text-body)] leading-relaxed text-sm mt-5 max-w-xl">
+                    {set.description}
+                  </motion.p>
                 )}
               </motion.div>
-            </motion.div>
+            </div>
           </div>
         </section>
 
         {/* ── Body ────────────────────────────────────────────────────────── */}
-        <section className="max-w-6xl mx-auto px-4 sm:px-6 py-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main column */}
           <div className="lg:col-span-2 flex flex-col gap-8">
-            {/* Description */}
-            {set.description && (
-              <Reveal>
-                <Card>
-                  <h2 className="text-lg font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)] mb-3">
-                    About the Class of {set.set_name}
+            {/* Gallery */}
+            {set.images && set.images.length > 0 && (
+              <div>
+                <Reveal>
+                  <h2 className="text-lg font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)] mb-4">
+                    Set Gallery ({set.images.length})
                   </h2>
-                  <p className="text-[var(--text-body)] leading-relaxed text-sm">
-                    {set.description}
-                  </p>
-                </Card>
-              </Reveal>
+                </Reveal>
+                <Stagger className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {set.images.map((img) => (
+                    <StaggerItem key={img.id}>
+                      <div className="aspect-square rounded-xl overflow-hidden border border-[var(--border-subtle)]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={img.image_url}
+                          alt={`Class of ${set.set_name} gallery`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    </StaggerItem>
+                  ))}
+                </Stagger>
+              </div>
             )}
 
             {/* Members grid */}

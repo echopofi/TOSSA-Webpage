@@ -1,8 +1,15 @@
 const prisma = require('../config/prisma');
+const { deleteImage } = require('../services/cloudinary');
 
 // Helper: check if requester is admin
 function isAdmin(req) {
   return req.user && req.user.role === 'admin';
+}
+
+// Reject data URLs/base64 — set images must be real (Cloudinary) URLs, same
+// guard the auth controller applies to member profile photos.
+function isValidImageUrl(url) {
+  return typeof url === 'string' && url.length > 0 && url.length <= 2000 && !/^data:/i.test(url);
 }
 
 // GET /api/members — authenticated
@@ -206,7 +213,10 @@ async function updateMember(req, res) {
 async function listSets(req, res) {
   try {
     const sets = await prisma.graduationSet.findMany({
-      include: { _count: { select: { setMembers: true } } },
+      include: {
+        _count: { select: { setMembers: true } },
+        setImages: { orderBy: { createdAt: 'asc' } },
+      },
       orderBy: { startYear: 'desc' },
       where: { isActive: true },
     });
@@ -219,6 +229,12 @@ async function listSets(req, res) {
         endYear: s.endYear,
         description: s.description,
         groupInviteLink: s.groupInviteLink,
+        coverImage: s.coverImage,
+        setImages: s.setImages.map((si) => ({
+          id: si.id,
+          imageUrl: si.imageUrl,
+          createdAt: si.createdAt,
+        })),
         memberCount: s._count.setMembers,
         createdAt: s.createdAt,
       })),
@@ -232,13 +248,16 @@ async function listSets(req, res) {
 // POST /api/sets — admin
 async function createSet(req, res) {
   try {
-    const { setName, startYear, endYear, description, groupInviteLink } = req.body;
+    const { setName, startYear, endYear, description, groupInviteLink, coverImage } = req.body;
     if (!setName || !startYear || !endYear) {
       return res.status(400).json({ error: 'setName, startYear, endYear are required' });
     }
+    if (coverImage !== undefined && !isValidImageUrl(coverImage)) {
+      return res.status(400).json({ error: 'coverImage must be an uploaded image URL' });
+    }
 
     const set = await prisma.graduationSet.create({
-      data: { setName, startYear, endYear, description, groupInviteLink },
+      data: { setName, startYear, endYear, description, groupInviteLink, coverImage: coverImage || null },
     });
 
     res.status(201).json({
@@ -248,6 +267,8 @@ async function createSet(req, res) {
       endYear: set.endYear,
       description: set.description,
       groupInviteLink: set.groupInviteLink,
+      coverImage: set.coverImage,
+      setImages: [],
       createdAt: set.createdAt,
     });
   } catch (err) {
@@ -262,7 +283,7 @@ async function createSet(req, res) {
 // PUT /api/sets/:id — admin
 async function updateSet(req, res) {
   try {
-    const { setName, startYear, endYear, description, groupInviteLink, isActive } = req.body;
+    const { setName, startYear, endYear, description, groupInviteLink, coverImage, isActive } = req.body;
     const data = {};
     if (setName !== undefined) data.setName = setName;
     if (startYear !== undefined) data.startYear = startYear;
@@ -270,11 +291,35 @@ async function updateSet(req, res) {
     if (description !== undefined) data.description = description;
     if (groupInviteLink !== undefined) data.groupInviteLink = groupInviteLink;
     if (isActive !== undefined) data.isActive = isActive;
+    if (coverImage !== undefined) {
+      if (!isValidImageUrl(coverImage !== null ? coverImage : '')) {
+        return res.status(400).json({ error: 'coverImage must be an uploaded image URL' });
+      }
+      data.coverImage = coverImage || null;
+    }
+
+    let oldCoverUrl = null;
+    if (data.coverImage !== undefined) {
+      const existing = await prisma.graduationSet.findUnique({
+        where: { id: req.params.id },
+        select: { coverImage: true },
+      });
+      if (!existing) {
+        return res.status(404).json({ error: 'Set not found' });
+      }
+      oldCoverUrl = existing.coverImage;
+    }
 
     const set = await prisma.graduationSet.update({
       where: { id: req.params.id },
       data,
     });
+
+    // Cover slot semantics: replacing/nulling the cover deletes the old asset
+    // from Cloudinary so we never leave orphaned images behind.
+    if (data.coverImage !== undefined && oldCoverUrl && oldCoverUrl !== data.coverImage) {
+      await deleteImage(oldCoverUrl);
+    }
 
     res.json({
       id: set.id,
@@ -283,6 +328,7 @@ async function updateSet(req, res) {
       endYear: set.endYear,
       description: set.description,
       groupInviteLink: set.groupInviteLink,
+      coverImage: set.coverImage,
       isActive: set.isActive,
     });
   } catch (err) {
@@ -297,4 +343,102 @@ async function updateSet(req, res) {
   }
 }
 
-module.exports = { listMembers, searchMembers, getMember, updateOwnPhoto, updateMember, listSets, createSet, updateSet };
+// PUT /api/admin/sets/:id/cover — admin
+// Single-slot cover: a new URL replaces the existing one (old asset deleted
+// from Cloudinary first); passing coverImage: null clears the cover.
+async function updateSetCover(req, res) {
+  try {
+    const { coverImage } = req.body;
+
+    const existing = await prisma.graduationSet.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, coverImage: true },
+    });
+    if (!existing) {
+      return res.status(404).json({ error: 'Set not found' });
+    }
+
+    if (coverImage !== undefined && !isValidImageUrl(coverImage !== null ? coverImage : '')) {
+      return res.status(400).json({ error: 'coverImage must be an uploaded image URL' });
+    }
+    const nextCover = coverImage || null;
+
+    const set = await prisma.graduationSet.update({
+      where: { id: req.params.id },
+      data: { coverImage: nextCover },
+      include: { setImages: { orderBy: { createdAt: 'asc' } } },
+    });
+
+    if (existing.coverImage && existing.coverImage !== nextCover) {
+      await deleteImage(existing.coverImage);
+    }
+
+    res.json({
+      id: set.id,
+      setName: set.setName,
+      coverImage: set.coverImage,
+      setImages: set.setImages.map((si) => ({ id: si.id, imageUrl: si.imageUrl, createdAt: si.createdAt })),
+    });
+  } catch (err) {
+    if (err.code === 'P2025') {
+      return res.status(404).json({ error: 'Set not found' });
+    }
+    console.error('Update set cover error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// POST /api/admin/sets/:id/images — admin
+// Gallery is an append-only collection: add an image URL, it gets a new row.
+async function addSetImage(req, res) {
+  try {
+    const { imageUrl } = req.body;
+    if (!isValidImageUrl(imageUrl)) {
+      return res.status(400).json({ error: 'imageUrl must be an uploaded image URL' });
+    }
+
+    const set = await prisma.graduationSet.findUnique({ where: { id: req.params.id } });
+    if (!set) {
+      return res.status(404).json({ error: 'Set not found' });
+    }
+
+    const image = await prisma.setImage.create({
+      data: { setId: set.id, imageUrl },
+    });
+
+    res.status(201).json({
+      id: image.id,
+      imageUrl: image.imageUrl,
+      createdAt: image.createdAt,
+    });
+  } catch (err) {
+    console.error('Add set image error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// DELETE /api/admin/sets/:id/images/:imageId — admin
+// Removing a gallery image deletes the Cloudinary asset then the DB record.
+async function removeSetImage(req, res) {
+  try {
+    const image = await prisma.setImage.findFirst({
+      where: { id: req.params.imageId, setId: req.params.id },
+    });
+    if (!image) {
+      return res.status(404).json({ error: 'Set image not found' });
+    }
+
+    await prisma.setImage.delete({ where: { id: image.id } });
+    await deleteImage(image.imageUrl);
+
+    res.json({ message: 'Set image removed' });
+  } catch (err) {
+    if (err.code === 'P2025') {
+      return res.status(404).json({ error: 'Set image not found' });
+    }
+    console.error('Remove set image error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+module.exports = { listMembers, searchMembers, getMember, updateOwnPhoto, updateMember, listSets, createSet, updateSet, updateSetCover, addSetImage, removeSetImage };

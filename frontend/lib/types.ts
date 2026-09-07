@@ -115,10 +115,19 @@ export interface GraduationSet {
   end_year: number;
   description?: string;
   group_invite_link?: string; // WhatsApp link
+  cover_image?: string;       // Cloudinary URL — single "set president" photo
+  images?: SetImage[];        // gallery — one-to-many, no cap per set
   is_active: boolean;
   member_count?: number;      // aggregated on list response
   created_at: string;
   updated_at: string;
+}
+
+/** Mirrors set_images table */
+export interface SetImage {
+  id: string;
+  image_url: string;          // Cloudinary URL
+  created_at: string;
 }
 
 // ─── Payments (one-time registration fee) ────────────────────────────────────

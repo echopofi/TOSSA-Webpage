@@ -84,3 +84,38 @@ export async function uploadMemberPhoto(file: File): Promise<string> {
   }
   return json.secure_url as string;
 }
+
+/**
+ * Upload a set image (cover or gallery) to Cloudinary through the same signed
+ * flow as the member photo. The folder is namespaced per purpose so the admin
+ * can tell covers and gallery shots apart in the media library:
+ *   cover  -> "sets"          (single slot on graduation_sets.cover_image)
+ *   gallery-> "sets/gallery"  (rows in set_images)
+ */
+export async function uploadSetImage(
+  file: File,
+  folder: "sets" | "sets/gallery" = "sets"
+): Promise<string> {
+  if (!isRealBackend()) {
+    return fileToResizedDataUrl(file);
+  }
+
+  const sigRes = await apiGetCloudinarySignature(folder);
+  const sig = sigRes.data;
+  const form = new FormData();
+  form.append("file", file);
+  form.append("api_key", sig.apiKey);
+  form.append("timestamp", String(sig.timestamp));
+  form.append("signature", sig.signature);
+  form.append("folder", sig.folder);
+
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`,
+    { method: "POST", body: form }
+  );
+  const json = await res.json();
+  if (!res.ok || !json.secure_url) {
+    throw new Error(json.error?.message ?? "Image upload failed");
+  }
+  return json.secure_url as string;
+}

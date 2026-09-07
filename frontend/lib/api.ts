@@ -33,6 +33,7 @@ import type {
   RegisterPayload,
   Member,
   GraduationSet,
+  SetImage,
   Payment,
   PaystackInitResponse,
   DuesCycle,
@@ -648,6 +649,11 @@ export async function apiUpdateMember(
 /** GET /api/sets — public, includes member_count */
 export async function apiGetSets(): Promise<ApiSuccess<GraduationSet[]>> {
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sets`);
+  interface SetImageEntry {
+    id: string;
+    imageUrl: string;
+    createdAt: string;
+  }
   interface SetsEntry {
     id: string;
     setName: string;
@@ -655,6 +661,8 @@ export async function apiGetSets(): Promise<ApiSuccess<GraduationSet[]>> {
     endYear: number;
     description?: string | null;
     groupInviteLink?: string | null;
+    coverImage?: string | null;
+    setImages?: SetImageEntry[];
     memberCount?: number;
     createdAt: string;
   }
@@ -667,6 +675,12 @@ export async function apiGetSets(): Promise<ApiSuccess<GraduationSet[]>> {
     end_year:         s.endYear,
     description:      s.description ?? undefined,
     group_invite_link: s.groupInviteLink ?? undefined,
+    cover_image:     s.coverImage ?? undefined,
+    images:          (s.setImages ?? []).map((si) => ({
+      id:         si.id,
+      image_url:  si.imageUrl,
+      created_at: si.createdAt,
+    })),
     is_active:        true,
     member_count:     s.memberCount,
     created_at:       s.createdAt,
@@ -680,6 +694,102 @@ export async function apiGetSet(id: string): Promise<ApiSuccess<GraduationSet>> 
   const { data: sets } = await apiGetSets();
   const set = sets.find((s) => s.id === id) ?? sets[0];
   return { success: true, data: set };
+}
+
+/** PUT /api/sets/:id — admin; updates the set write-up (description etc.) */
+export async function apiAdminUpdateSet(
+  id: string,
+  payload: {
+    description?: string;
+    groupInviteLink?: string;
+    isActive?: boolean;
+  }
+): Promise<ApiSuccess<GraduationSet>> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl || !getAccessToken()) {
+    throw new ApiRequestError(0, "Requires the backend. Please sign in again.");
+  }
+  const res = await authedFetch(`/api/sets/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+  const json = (await res.json()) as
+    | { id?: string; setName?: string; description?: string | null; coverImage?: string | null }
+    | undefined;
+  return ok({
+    id: json?.id ?? id,
+    set_name: json?.setName ?? "",
+    start_year: 0,
+    end_year: 0,
+    description: json?.description ?? undefined,
+    cover_image: json?.coverImage ?? undefined,
+    is_active: true,
+    created_at: "",
+    updated_at: "",
+  });
+}
+
+/** PUT /api/admin/sets/:id/cover — admin; replace the single-slot cover image */
+export async function apiAdminUpdateSetCover(
+  setId: string,
+  coverImage: string | null
+): Promise<ApiSuccess<GraduationSet>> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl || !getAccessToken()) {
+    throw new ApiRequestError(0, "Requires the backend. Please sign in again.");
+  }
+  const res = await authedFetch(`/api/admin/sets/${setId}/cover`, {
+    method: "PUT",
+    body: JSON.stringify({ coverImage }),
+  });
+  const json = (await res.json()) as
+    | { id?: string; setName?: string; coverImage?: string | null; setImages?: Array<{ id: string; imageUrl: string; createdAt: string }> }
+    | undefined;
+  return ok({
+    id: json?.id ?? setId,
+    set_name: json?.setName ?? "",
+    start_year: 0,
+    end_year: 0,
+    cover_image: json?.coverImage ?? undefined,
+    images: (json?.setImages ?? []).map((si) => ({ id: si.id, image_url: si.imageUrl, created_at: si.createdAt })),
+    is_active: true,
+    created_at: "",
+    updated_at: "",
+  });
+}
+
+/** POST /api/admin/sets/:id/images — admin; append a gallery image */
+export async function apiAdminAddSetImage(
+  setId: string,
+  imageUrl: string
+): Promise<ApiSuccess<SetImage>> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl || !getAccessToken()) {
+    throw new ApiRequestError(0, "Requires the backend. Please sign in again.");
+  }
+  const res = await authedFetch(`/api/admin/sets/${setId}/images`, {
+    method: "POST",
+    body: JSON.stringify({ imageUrl }),
+  });
+  const json = (await res.json()) as { id?: string; imageUrl?: string; createdAt?: string } | undefined;
+  return ok({
+    id: json?.id ?? "",
+    image_url: json?.imageUrl ?? imageUrl,
+    created_at: json?.createdAt ?? new Date().toISOString(),
+  });
+}
+
+/** DELETE /api/admin/sets/:id/images/:imageId — admin; remove a gallery image */
+export async function apiAdminRemoveSetImage(
+  setId: string,
+  imageId: string
+): Promise<ApiSuccess<null>> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl || !getAccessToken()) {
+    throw new ApiRequestError(0, "Requires the backend. Please sign in again.");
+  }
+  await authedFetch(`/api/admin/sets/${setId}/images/${imageId}`, { method: "DELETE" });
+  return ok(null);
 }
 
 // ─── Member Milestones ────────────────────────────────────────────────────────

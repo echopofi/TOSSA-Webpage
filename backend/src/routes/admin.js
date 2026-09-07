@@ -15,6 +15,7 @@ const {
   adminUpdateApplication,
 } = require('../controllers/electionController');
 const { assignOfficer, endOfficerTerm } = require('../controllers/excoController');
+const { updateSetCover, addSetImage, removeSetImage } = require('../controllers/memberController');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -29,6 +30,11 @@ router.put('/members/:id/role', updateMemberRole);
 router.get('/members/pending', pendingMembers);
 router.patch('/members/:id/approve', approveMember);
 router.patch('/members/:id/reject', rejectMember);
+
+// Set images — cover (single slot) + gallery (collection)
+router.put('/sets/:id/cover', updateSetCover);
+router.post('/sets/:id/images', addSetImage);
+router.delete('/sets/:id/images/:imageId', removeSetImage);
 
 // Elections — admin review
 router.get('/elections/applications', adminListApplications);
