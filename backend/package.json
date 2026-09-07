@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "description": "Backend for secondary school alumni association website",
   "main": "src/index.js",
-  "scripts": {
+"scripts": {
     "start": "node src/index.js",
     "dev": "bash start-dev.sh",
+    "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",

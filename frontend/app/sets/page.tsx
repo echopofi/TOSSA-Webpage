@@ -45,14 +45,23 @@ export default function SetsPage() {
                 <Link href={`/sets/${set.id}`} className="group block h-full">
                   <div className={`card h-full flex flex-col overflow-hidden ${sheenClass}`}>
                     {/* Cover image, falling back to a coloured band when none is set */}
-                    <div className="h-28 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-hover)] flex items-center justify-center overflow-hidden">
+                    <div className="relative h-28 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-hover)] flex items-center justify-center overflow-hidden">
                       {set.cover_image ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={set.cover_image}
-                          alt={`Class of ${set.set_name}`}
-                          className="w-full h-full object-cover"
-                        />
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={set.cover_image}
+                            alt={`Class of ${set.set_name}`}
+                            className="w-full h-full object-cover"
+                          />
+                          {set.cover_image_caption && (
+                            <div className="absolute inset-x-0 bottom-0 bg-black/55 backdrop-blur-sm px-3 py-1.5">
+                              <p className="text-white text-xs font-medium truncate">
+                                {set.cover_image_caption}
+                              </p>
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <span className="text-4xl font-[family-name:var(--font-heading)] font-semibold text-white/90">
                           {set.set_name}

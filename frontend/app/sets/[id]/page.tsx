@@ -68,12 +68,21 @@ export default function SetPage({ params }: { params: Promise<{ id: string }> })
                   className="rounded-xl overflow-hidden border border-[var(--border-subtle)] shadow-[var(--shadow-card)] aspect-[4/3] bg-gradient-to-br from-[var(--primary)] to-[var(--primary-hover)]"
                 >
                   {set.cover_image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={set.cover_image}
-                      alt={`Class of ${set.set_name}`}
-                      className="w-full h-full object-cover"
-                    />
+                    <div className="relative w-full h-full">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={set.cover_image}
+                        alt={`Class of ${set.set_name}`}
+                        className="w-full h-full object-cover"
+                      />
+                      {set.cover_image_caption && (
+                        <div className="absolute inset-x-0 bottom-0 bg-black/55 backdrop-blur-sm px-3 py-2">
+                          <p className="text-white text-sm font-medium truncate">
+                            {set.cover_image_caption}
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <span className="text-5xl font-semibold text-white/90 font-[family-name:var(--font-heading)]">

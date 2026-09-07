@@ -230,6 +230,7 @@ async function listSets(req, res) {
         description: s.description,
         groupInviteLink: s.groupInviteLink,
         coverImage: s.coverImage,
+        coverImageCaption: s.coverImageCaption,
         setImages: s.setImages.map((si) => ({
           id: si.id,
           imageUrl: si.imageUrl,
@@ -248,7 +249,7 @@ async function listSets(req, res) {
 // POST /api/sets — admin
 async function createSet(req, res) {
   try {
-    const { setName, startYear, endYear, description, groupInviteLink, coverImage } = req.body;
+    const { setName, startYear, endYear, description, groupInviteLink, coverImage, coverImageCaption } = req.body;
     if (!setName || !startYear || !endYear) {
       return res.status(400).json({ error: 'setName, startYear, endYear are required' });
     }
@@ -257,7 +258,11 @@ async function createSet(req, res) {
     }
 
     const set = await prisma.graduationSet.create({
-      data: { setName, startYear, endYear, description, groupInviteLink, coverImage: coverImage || null },
+      data: {
+        setName, startYear, endYear, description, groupInviteLink,
+        coverImage: coverImage || null,
+        coverImageCaption: coverImageCaption || null,
+      },
     });
 
     res.status(201).json({
@@ -268,6 +273,7 @@ async function createSet(req, res) {
       description: set.description,
       groupInviteLink: set.groupInviteLink,
       coverImage: set.coverImage,
+      coverImageCaption: set.coverImageCaption,
       setImages: [],
       createdAt: set.createdAt,
     });
@@ -283,7 +289,7 @@ async function createSet(req, res) {
 // PUT /api/sets/:id — admin
 async function updateSet(req, res) {
   try {
-    const { setName, startYear, endYear, description, groupInviteLink, coverImage, isActive } = req.body;
+    const { setName, startYear, endYear, description, groupInviteLink, coverImage, coverImageCaption, isActive } = req.body;
     const data = {};
     if (setName !== undefined) data.setName = setName;
     if (startYear !== undefined) data.startYear = startYear;
@@ -291,6 +297,7 @@ async function updateSet(req, res) {
     if (description !== undefined) data.description = description;
     if (groupInviteLink !== undefined) data.groupInviteLink = groupInviteLink;
     if (isActive !== undefined) data.isActive = isActive;
+    if (coverImageCaption !== undefined) data.coverImageCaption = coverImageCaption || null;
     if (coverImage !== undefined) {
       if (!isValidImageUrl(coverImage !== null ? coverImage : '')) {
         return res.status(400).json({ error: 'coverImage must be an uploaded image URL' });
@@ -329,6 +336,7 @@ async function updateSet(req, res) {
       description: set.description,
       groupInviteLink: set.groupInviteLink,
       coverImage: set.coverImage,
+      coverImageCaption: set.coverImageCaption,
       isActive: set.isActive,
     });
   } catch (err) {
@@ -348,7 +356,7 @@ async function updateSet(req, res) {
 // from Cloudinary first); passing coverImage: null clears the cover.
 async function updateSetCover(req, res) {
   try {
-    const { coverImage } = req.body;
+    const { coverImage, coverImageCaption } = req.body;
 
     const existing = await prisma.graduationSet.findUnique({
       where: { id: req.params.id },
@@ -361,15 +369,19 @@ async function updateSetCover(req, res) {
     if (coverImage !== undefined && !isValidImageUrl(coverImage !== null ? coverImage : '')) {
       return res.status(400).json({ error: 'coverImage must be an uploaded image URL' });
     }
-    const nextCover = coverImage || null;
+    const nextCover = coverImage !== undefined ? (coverImage || null) : undefined;
+
+    const updateData = {};
+    if (nextCover !== undefined) updateData.coverImage = nextCover;
+    if (coverImageCaption !== undefined) updateData.coverImageCaption = coverImageCaption || null;
 
     const set = await prisma.graduationSet.update({
       where: { id: req.params.id },
-      data: { coverImage: nextCover },
+      data: updateData,
       include: { setImages: { orderBy: { createdAt: 'asc' } } },
     });
 
-    if (existing.coverImage && existing.coverImage !== nextCover) {
+    if (nextCover !== undefined && existing.coverImage && existing.coverImage !== nextCover) {
       await deleteImage(existing.coverImage);
     }
 
@@ -377,6 +389,7 @@ async function updateSetCover(req, res) {
       id: set.id,
       setName: set.setName,
       coverImage: set.coverImage,
+      coverImageCaption: set.coverImageCaption,
       setImages: set.setImages.map((si) => ({ id: si.id, imageUrl: si.imageUrl, createdAt: si.createdAt })),
     });
   } catch (err) {

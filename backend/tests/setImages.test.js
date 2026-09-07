@@ -62,6 +62,37 @@ describe('Set cover image (admin only)', () => {
       expect(deleteImage).not.toHaveBeenCalled();
     });
 
+    it('saves the chairman name (coverImageCaption) with the cover', async () => {
+      const url = 'https://res.cloudinary.com/x/image/upload/v1/sets/cover-2.jpg';
+      const res = await request(app)
+        .put(`/api/admin/sets/${set2020.id}/cover`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ coverImage: url, coverImageCaption: 'John Owusu' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.coverImage).toBe(url);
+      expect(res.body.coverImageCaption).toBe('John Owusu');
+      const db = await prisma.graduationSet.findUnique({ where: { id: set2020.id } });
+      expect(db.coverImageCaption).toBe('John Owusu');
+    });
+
+    it('clears the caption when removed alongside the cover', async () => {
+      await prisma.graduationSet.update({
+        where: { id: set2020.id },
+        data: { coverImage: 'https://res.cloudinary.com/x/image/upload/v1/sets/old.jpg', coverImageCaption: 'Old Chair' },
+      });
+
+      const res = await request(app)
+        .put(`/api/admin/sets/${set2020.id}/cover`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ coverImage: null, coverImageCaption: '' });
+
+      expect(res.status).toBe(200);
+      const db = await prisma.graduationSet.findUnique({ where: { id: set2020.id } });
+      expect(db.coverImage).toBeNull();
+      expect(db.coverImageCaption).toBeNull();
+    });
+
     it('replaces the old cover and deletes it from Cloudinary', async () => {
       await prisma.graduationSet.update({
         where: { id: set2020.id },

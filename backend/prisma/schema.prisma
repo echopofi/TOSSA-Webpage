@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -69,8 +70,9 @@ model GraduationSet {
   endYear         Int      @map("end_year") @db.SmallInt
   description     String?  @db.Text()
   groupInviteLink String?  @map("group_invite_link") @db.VarChar(500)
-  coverImage      String?  @map("cover_image") @db.Text()
-  isActive        Boolean  @default(true) @map("is_active")
+  coverImage         String?  @map("cover_image") @db.Text()
+  coverImageCaption  String?  @map("cover_image_caption") @db.VarChar(255)
+  isActive           Boolean  @default(true) @map("is_active")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @default(now()) @map("updated_at")
 

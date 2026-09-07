@@ -116,6 +116,7 @@ export interface GraduationSet {
   description?: string;
   group_invite_link?: string; // WhatsApp link
   cover_image?: string;       // Cloudinary URL — single "set president" photo
+  cover_image_caption?: string; // Chairman/president name displayed on cover
   images?: SetImage[];        // gallery — one-to-many, no cap per set
   is_active: boolean;
   member_count?: number;      // aggregated on list response

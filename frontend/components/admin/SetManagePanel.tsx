@@ -26,6 +26,7 @@ export default function SetManagePanel() {
   const [loading, setLoading]         = useState(true);
   const [busy, setBusy]               = useState<"cover" | "gallery" | "description" | null>(null);
   const [removingId, setRemovingId]   = useState<string | null>(null);
+  const [caption, setCaption]          = useState("");
   const [error, setError]             = useState("");
   const [notice, setNotice]           = useState("");
   const coverInputRef                 = useRef<HTMLInputElement | null>(null);
@@ -50,7 +51,10 @@ export default function SetManagePanel() {
   }, []);
 
   useEffect(() => {
-    if (selected) descForm.reset({ description: selected.description ?? "" });
+    if (selected) {
+      descForm.reset({ description: selected.description ?? "" });
+      setCaption(selected.cover_image_caption ?? "");
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 
@@ -60,8 +64,12 @@ export default function SetManagePanel() {
     if (!file || !selected) return;
     await runAction("cover", async () => {
       const url = await uploadSetImage(file, "sets");
-      const res = await apiAdminUpdateSetCover(selected.id, url);
-      updateSelected((s) => ({ ...s, cover_image: res.data.cover_image }));
+      const res = await apiAdminUpdateSetCover(selected.id, url, caption);
+      updateSelected((s) => ({
+        ...s,
+        cover_image: res.data.cover_image,
+        cover_image_caption: res.data.cover_image_caption,
+      }));
       setNotice("Cover image updated. The previous cover was removed from Cloudinary.");
     });
   }
@@ -69,9 +77,18 @@ export default function SetManagePanel() {
   async function handleRemoveCover() {
     if (!selected?.cover_image || !selected) return;
     await runAction("cover", async () => {
-      await apiAdminUpdateSetCover(selected.id, null);
-      updateSelected((s) => ({ ...s, cover_image: undefined }));
+      await apiAdminUpdateSetCover(selected.id, null, "");
+      updateSelected((s) => ({ ...s, cover_image: undefined, cover_image_caption: undefined }));
       setNotice("Cover removed and deleted from Cloudinary.");
+    });
+  }
+
+  async function handleSaveCaption() {
+    if (!selected) return;
+    await runAction("cover", async () => {
+      await apiAdminUpdateSet(selected.id, { coverImageCaption: caption.trim() || undefined });
+      updateSelected((s) => ({ ...s, cover_image_caption: caption.trim() || undefined }));
+      setNotice("Chairman name updated.");
     });
   }
 
@@ -217,6 +234,36 @@ export default function SetManagePanel() {
                           <Trash2 size={14} /> Remove
                         </Button>
                       )}
+                    </div>
+                    {/* Chairman / president name — captured with the cover upload */}
+                    <div className="flex flex-col gap-1.5 mt-1">
+                      <label
+                        htmlFor="set-cover-caption"
+                        className="text-sm font-medium text-[var(--text-heading)] font-[family-name:var(--font-heading)]"
+                      >
+                        Set Chairman name
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          id="set-cover-caption"
+                          className="input flex-1"
+                          placeholder="e.g. John Owusu — Chairman"
+                          value={caption}
+                          onChange={(e) => setCaption(e.target.value)}
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          loading={busy === "cover"}
+                          onClick={handleSaveCaption}
+                          aria-label="Save chairman name"
+                        >
+                          <Save size={14} />
+                        </Button>
+                      </div>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        Saved with the cover photo and shown as its caption.
+                      </p>
                     </div>
                   </div>
 

@@ -662,6 +662,7 @@ export async function apiGetSets(): Promise<ApiSuccess<GraduationSet[]>> {
     description?: string | null;
     groupInviteLink?: string | null;
     coverImage?: string | null;
+    coverImageCaption?: string | null;
     setImages?: SetImageEntry[];
     memberCount?: number;
     createdAt: string;
@@ -676,6 +677,7 @@ export async function apiGetSets(): Promise<ApiSuccess<GraduationSet[]>> {
     description:      s.description ?? undefined,
     group_invite_link: s.groupInviteLink ?? undefined,
     cover_image:     s.coverImage ?? undefined,
+    cover_image_caption: s.coverImageCaption ?? undefined,
     images:          (s.setImages ?? []).map((si) => ({
       id:         si.id,
       image_url:  si.imageUrl,
@@ -701,6 +703,7 @@ export async function apiAdminUpdateSet(
   id: string,
   payload: {
     description?: string;
+    coverImageCaption?: string;
     groupInviteLink?: string;
     isActive?: boolean;
   }
@@ -714,7 +717,7 @@ export async function apiAdminUpdateSet(
     body: JSON.stringify(payload),
   });
   const json = (await res.json()) as
-    | { id?: string; setName?: string; description?: string | null; coverImage?: string | null }
+    | { id?: string; setName?: string; description?: string | null; coverImage?: string | null; coverImageCaption?: string | null }
     | undefined;
   return ok({
     id: json?.id ?? id,
@@ -723,6 +726,7 @@ export async function apiAdminUpdateSet(
     end_year: 0,
     description: json?.description ?? undefined,
     cover_image: json?.coverImage ?? undefined,
+    cover_image_caption: json?.coverImageCaption ?? undefined,
     is_active: true,
     created_at: "",
     updated_at: "",
@@ -732,18 +736,21 @@ export async function apiAdminUpdateSet(
 /** PUT /api/admin/sets/:id/cover — admin; replace the single-slot cover image */
 export async function apiAdminUpdateSetCover(
   setId: string,
-  coverImage: string | null
+  coverImage: string | null,
+  coverImageCaption?: string | null
 ): Promise<ApiSuccess<GraduationSet>> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   if (!apiUrl || !getAccessToken()) {
     throw new ApiRequestError(0, "Requires the backend. Please sign in again.");
   }
+  const body: Record<string, unknown> = { coverImage };
+  if (coverImageCaption !== undefined) body.coverImageCaption = coverImageCaption;
   const res = await authedFetch(`/api/admin/sets/${setId}/cover`, {
     method: "PUT",
-    body: JSON.stringify({ coverImage }),
+    body: JSON.stringify(body),
   });
   const json = (await res.json()) as
-    | { id?: string; setName?: string; coverImage?: string | null; setImages?: Array<{ id: string; imageUrl: string; createdAt: string }> }
+    | { id?: string; setName?: string; coverImage?: string | null; coverImageCaption?: string | null; setImages?: Array<{ id: string; imageUrl: string; createdAt: string }> }
     | undefined;
   return ok({
     id: json?.id ?? setId,
@@ -751,6 +758,7 @@ export async function apiAdminUpdateSetCover(
     start_year: 0,
     end_year: 0,
     cover_image: json?.coverImage ?? undefined,
+    cover_image_caption: json?.coverImageCaption ?? undefined,
     images: (json?.setImages ?? []).map((si) => ({ id: si.id, image_url: si.imageUrl, created_at: si.createdAt })),
     is_active: true,
     created_at: "",
