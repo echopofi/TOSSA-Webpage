@@ -65,7 +65,7 @@ export default function SetPage({ params }: { params: Promise<{ id: string }> })
               >
                 <motion.div
                   variants={fadeUp}
-                  className="rounded-xl overflow-hidden border border-[var(--border-subtle)] shadow-[var(--shadow-card)] aspect-[4/3] bg-gradient-to-br from-[var(--primary)] to-[var(--primary-hover)]"
+                  className="rounded-xl overflow-hidden border border-[var(--border-subtle)] shadow-[var(--shadow-card)] aspect-[3/4] bg-gradient-to-br from-[var(--primary)] to-[var(--primary-hover)]"
                 >
                   {set.cover_image ? (
                     <div className="relative w-full h-full">
@@ -146,7 +146,7 @@ export default function SetPage({ params }: { params: Promise<{ id: string }> })
                 <Stagger className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {set.images.map((img) => (
                     <StaggerItem key={img.id}>
-                      <div className="aspect-square rounded-xl overflow-hidden border border-[var(--border-subtle)]">
+                      <div className="aspect-[3/4] rounded-xl overflow-hidden border border-[var(--border-subtle)]">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={img.image_url}

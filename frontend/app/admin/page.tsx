@@ -38,7 +38,6 @@ import { formatDate } from "@/lib/utils";
 import ElectionReviewPanel from "@/components/admin/ElectionReviewPanel";
 import ExcoAssignmentPanel from "@/components/admin/ExcoAssignmentPanel";
 import PendingMembersPanel from "@/components/admin/PendingMembersPanel";
-import SetManagePanel from "@/components/admin/SetManagePanel";
 
 // ─── Form shape ───────────────────────────────────────────────────────────────
 
@@ -520,14 +519,6 @@ export default function AdminPage() {
           <ElectionReviewPanel />
           <ExcoAssignmentPanel />
         </div>
-      </div>
-
-      {/* ── Graduating set media management ─────────────────────────────── */}
-      <div>
-        <h2 className="text-lg font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)] mb-4">
-          Graduating Sets
-        </h2>
-        <SetManagePanel />
       </div>
     </div>
   );

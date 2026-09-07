@@ -5,7 +5,16 @@ import { useForm } from "react-hook-form";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
-import { ImagePlus, Trash2, Images, CheckCircle2, AlertTriangle, ImageIcon, Save } from "lucide-react";
+import ImageCropModal from "@/components/admin/ImageCropModal";
+import {
+  ImagePlus,
+  Trash2,
+  Images,
+  CheckCircle2,
+  AlertTriangle,
+  ImageIcon,
+  Save,
+} from "lucide-react";
 import {
   apiGetSets,
   apiAdminUpdateSet,
@@ -20,17 +29,23 @@ interface DescriptionForm {
   description: string;
 }
 
+interface CropTarget {
+  file: File;
+  kind: "cover" | "gallery";
+}
+
 export default function SetManagePanel() {
-  const [sets, setSets]               = useState<GraduationSet[]>([]);
-  const [selectedId, setSelectedId]   = useState<string>("");
-  const [loading, setLoading]         = useState(true);
-  const [busy, setBusy]               = useState<"cover" | "gallery" | "description" | null>(null);
-  const [removingId, setRemovingId]   = useState<string | null>(null);
+  const [sets, setSets]                = useState<GraduationSet[]>([]);
+  const [selectedId, setSelectedId]    = useState<string>("");
+  const [loading, setLoading]          = useState(true);
+  const [busy, setBusy]                = useState<"cover" | "gallery" | "description" | null>(null);
+  const [removingId, setRemovingId]    = useState<string | null>(null);
   const [caption, setCaption]          = useState("");
-  const [error, setError]             = useState("");
-  const [notice, setNotice]           = useState("");
-  const coverInputRef                 = useRef<HTMLInputElement | null>(null);
-  const galleryInputRef               = useRef<HTMLInputElement | null>(null);
+  const [cropTarget, setCropTarget]    = useState<CropTarget | null>(null);
+  const [error, setError]              = useState("");
+  const [notice, setNotice]            = useState("");
+  const coverInputRef                  = useRef<HTMLInputElement | null>(null);
+  const galleryInputRef                = useRef<HTMLInputElement | null>(null);
 
   const descForm = useForm<DescriptionForm>();
 
@@ -41,36 +56,59 @@ export default function SetManagePanel() {
       try {
         const res = await apiGetSets();
         setSets(res.data);
-        if (res.data[0]) setSelectedId(res.data[0].id);
+        if (res.data[0]) {
+          const first = res.data[0];
+          setSelectedId(first.id);
+          setCaption(first.cover_image_caption ?? "");
+          descForm.reset({ description: first.description ?? "" });
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not load sets.");
       } finally {
         setLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (selected) {
-      descForm.reset({ description: selected.description ?? "" });
-      setCaption(selected.cover_image_caption ?? "");
+  function handleSelectSet(id: string) {
+    setSelectedId(id);
+    const set = sets.find((s) => s.id === id);
+    if (set) {
+      setCaption(set.cover_image_caption ?? "");
+      descForm.reset({ description: set.description ?? "" });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId]);
+  }
 
-  async function handleCoverFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file || !selected) return;
+  /** Clear both editable fields after a committed save — clean slate + the
+   *  success notice is the explicit "you're done" signal. */
+  function resetEditableForms() {
+    descForm.reset({ description: "" });
+    setCaption("");
+  }
+
+  async function commitCroppedCover(croppedFile: File) {
+    if (!selected) return;
     await runAction("cover", async () => {
-      const url = await uploadSetImage(file, "sets");
+      const url = await uploadSetImage(croppedFile, "sets");
       const res = await apiAdminUpdateSetCover(selected.id, url, caption);
       updateSelected((s) => ({
         ...s,
         cover_image: res.data.cover_image,
         cover_image_caption: res.data.cover_image_caption,
       }));
-      setNotice("Cover image updated. The previous cover was removed from Cloudinary.");
+      resetEditableForms();
+      setNotice("Cover image uploaded. The previous cover was removed from Cloudinary.");
+    });
+  }
+
+  async function commitCroppedGallery(croppedFile: File) {
+    if (!selected) return;
+    await runAction("gallery", async () => {
+      const url = await uploadSetImage(croppedFile, "sets/gallery");
+      const res = await apiAdminAddSetImage(selected.id, url);
+      updateSelected((s) => ({ ...s, images: [...(s.images ?? []), res.data] }));
+      setNotice("Gallery image added and cropped to portrait 3:4.");
     });
   }
 
@@ -79,6 +117,7 @@ export default function SetManagePanel() {
     await runAction("cover", async () => {
       await apiAdminUpdateSetCover(selected.id, null, "");
       updateSelected((s) => ({ ...s, cover_image: undefined, cover_image_caption: undefined }));
+      setCaption("");
       setNotice("Cover removed and deleted from Cloudinary.");
     });
   }
@@ -89,18 +128,6 @@ export default function SetManagePanel() {
       await apiAdminUpdateSet(selected.id, { coverImageCaption: caption.trim() || undefined });
       updateSelected((s) => ({ ...s, cover_image_caption: caption.trim() || undefined }));
       setNotice("Chairman name updated.");
-    });
-  }
-
-  async function handleGalleryFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file || !selected) return;
-    await runAction("gallery", async () => {
-      const url = await uploadSetImage(file, "sets/gallery");
-      const res = await apiAdminAddSetImage(selected.id, url);
-      updateSelected((s) => ({ ...s, images: [...(s.images ?? []), res.data] }));
-      setNotice("Gallery image added.");
     });
   }
 
@@ -124,7 +151,8 @@ export default function SetManagePanel() {
     await runAction("description", async () => {
       await apiAdminUpdateSet(selected.id, { description: data.description.trim() });
       updateSelected((s) => ({ ...s, description: data.description.trim() }));
-      setNotice(selected.description ? "Set write-up updated." : "Set write-up added.");
+      resetEditableForms();
+      setNotice("Set write-up saved. The form has been reset.");
     });
   }
 
@@ -182,7 +210,7 @@ export default function SetManagePanel() {
               label="Set"
               placeholder="Choose a set…"
               value={selectedId}
-              onChange={(e) => setSelectedId(e.target.value)}
+              onChange={(e) => handleSelectSet(e.target.value)}
               options={sets.map((s) => ({
                 value: s.id,
                 label: `Class of ${s.set_name} (${s.start_year} – ${s.end_year})`,
@@ -197,7 +225,7 @@ export default function SetManagePanel() {
                     <span className="text-sm font-medium text-[var(--text-heading)] font-[family-name:var(--font-heading)]">
                       Cover photo
                     </span>
-                    <div className="aspect-[4/3] rounded-xl overflow-hidden border border-[var(--border-subtle)] bg-gradient-to-br from-[var(--primary)] to-[var(--primary-hover)] flex items-center justify-center">
+                    <div className="aspect-[3/4] rounded-xl overflow-hidden border border-[var(--border-subtle)] bg-gradient-to-br from-[var(--primary)] to-[var(--primary-hover)] flex items-center justify-center">
                       {selected.cover_image ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -209,13 +237,17 @@ export default function SetManagePanel() {
                         <ImageIcon size={28} className="text-white/80" />
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <input
                         ref={coverInputRef}
                         type="file"
                         accept="image/*"
                         className="hidden"
-                        onChange={handleCoverFile}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          e.target.value = "";
+                          if (f) setCropTarget({ file: f, kind: "cover" });
+                        }}
                       />
                       <Button
                         size="sm"
@@ -303,7 +335,11 @@ export default function SetManagePanel() {
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={handleGalleryFile}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        e.target.value = "";
+                        if (f) setCropTarget({ file: f, kind: "gallery" });
+                      }}
                     />
                     <Button
                       size="sm"
@@ -320,7 +356,7 @@ export default function SetManagePanel() {
                       {selected.images.map((img) => (
                         <div
                           key={img.id}
-                          className="relative aspect-square rounded-xl overflow-hidden border border-[var(--border-subtle)] group"
+                          className="relative aspect-[3/4] rounded-xl overflow-hidden border border-[var(--border-subtle)] group"
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
@@ -355,6 +391,21 @@ export default function SetManagePanel() {
           </>
         )}
       </div>
+
+      {/* Crop step — fires for either cover or gallery selection. */}
+      <ImageCropModal
+        open={!!cropTarget}
+        file={cropTarget?.file ?? null}
+        title={cropTarget?.kind === "cover" ? "Crop cover photo" : "Crop gallery photo"}
+        aspect={3 / 4}
+        onCancel={() => setCropTarget(null)}
+        onConfirm={(croppedFile) => {
+          const kind = cropTarget?.kind;
+          setCropTarget(null);
+          if (kind === "cover") void commitCroppedCover(croppedFile);
+          else if (kind === "gallery") void commitCroppedGallery(croppedFile);
+        }}
+      />
     </Card>
   );
 }

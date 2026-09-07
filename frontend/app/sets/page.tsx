@@ -45,7 +45,7 @@ export default function SetsPage() {
                 <Link href={`/sets/${set.id}`} className="group block h-full">
                   <div className={`card h-full flex flex-col overflow-hidden ${sheenClass}`}>
                     {/* Cover image, falling back to a coloured band when none is set */}
-                    <div className="relative h-28 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-hover)] flex items-center justify-center overflow-hidden">
+                    <div className="relative aspect-[3/4] bg-gradient-to-br from-[var(--primary)] to-[var(--primary-hover)] flex items-center justify-center overflow-hidden">
                       {set.cover_image ? (
                         <>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
