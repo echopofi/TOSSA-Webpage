@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import SetStrip from "@/components/home/SetStrip";
-import { MOCK_SETS } from "@/lib/mockData";
 import { GraduationCap, CreditCard, MessageSquare, ArrowRight, CheckCircle } from "lucide-react";
 import { Reveal, Stagger, StaggerItem, fadeLeft, fadeRight, fadeUp, sheenClass } from "@/lib/motion";
 
@@ -145,7 +144,7 @@ export default function HomePage() {
               </div>
             </Reveal>
 
-            <SetStrip sets={MOCK_SETS} />
+            <SetStrip />
 
             <div className="mt-12 text-center">
               <Link

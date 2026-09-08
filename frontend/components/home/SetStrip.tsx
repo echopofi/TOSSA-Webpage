@@ -5,8 +5,9 @@ import { AnimatePresence, motion, type Variants } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, ChevronLeft, ChevronRight, GraduationCap, Users } from "lucide-react";
 import type { GraduationSet } from "@/lib/types";
+import { apiGetSets } from "@/lib/api";
 
-type SetStripProps = { sets: GraduationSet[] };
+type SetStripProps = { sets?: GraduationSet[] };
 
 const ROTATE_MS = 3400;
 
@@ -18,42 +19,78 @@ const stripSlide: Variants = {
 
 /**
  * Home-page "sets strip": shows one graduating set at a time and auto-rotates
- * through random sets with a smooth slide transition. A "See all sets" CTA
- * (rendered by the parent) links to /sets, which lists every set.
+ * with a smooth slide transition. Data source is the live GET /api/sets feed
+ * (real covers, captions, descriptions) so the highlight reel reflects the DB,
+ * not placeholder mock content.
+ *
+ * Missing-data handling:
+ *  - Sets without a cover image are skipped for the rotation when any sets have
+ *    one; if no set has a cover yet, the gradient fallback tile is used so the
+ *    strip still renders.
+ *  - No sets / fetch failure hides the strip entirely (the section header and
+ *    "See all sets" CTA remain rendered by the parent).
  */
-export default function SetStrip({ sets }: SetStripProps) {
+export default function SetStrip({ sets: staticSets }: SetStripProps) {
+  const [sets, setSets] = useState<GraduationSet[]>(staticSets ?? []);
+  const [fanned, setFanned] = useState(!!staticSets);
   const [index, setIndex] = useState(0);
   const [dir, setDir] = useState(1);
   const [paused, setPaused] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    if (staticSets) return; // static sets provided by caller — nothing to fetch
+    let cancelled = false;
+    apiGetSets()
+      .then((r) => {
+        if (cancelled) return;
+        setSets(r.data);
+        setFanned(true);
+      })
+      .catch(() => {
+        /* network/API failure → hide the strip, don't crash */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [staticSets]);
+
+  // Skip coverless sets for the highlight rotation (they'd show a bare tile);
+  // if none have a cover, fall back to all sets so the strip always has content.
+  const withCover = sets.filter((s) => s.cover_image);
+  const rotation = withCover.length > 0 ? withCover : sets;
+  const ready = fanned && rotation.length > 0;
+
   const pickRandom = useCallback(() => {
     setIndex((prev) => {
-      if (sets.length <= 1) return prev;
+      if (rotation.length <= 1) return prev;
       let next = prev;
-      while (next === prev) next = Math.floor(Math.random() * sets.length);
+      while (next === prev) next = Math.floor(Math.random() * rotation.length);
       setDir(next > prev ? 1 : -1);
       return next;
     });
-  }, [sets.length]);
+  }, [rotation.length]);
 
   const step = useCallback(
     (delta: number) => {
       setDir(delta);
-      setIndex((prev) => (prev + delta + sets.length) % sets.length);
+      setIndex((prev) => (prev + delta + rotation.length) % rotation.length);
     },
-    [sets.length],
+    [rotation.length],
   );
 
   useEffect(() => {
-    if (paused) return;
+    if (!ready || paused) return;
     timerRef.current = setTimeout(pickRandom, ROTATE_MS);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [index, paused, pickRandom]);
+  }, [index, ready, paused, pickRandom]);
 
-  const set = sets[index];
+  if (!ready) return null;
+
+  const safeIndex = rotation.length > 0 ? index % rotation.length : 0;
+  const set = rotation[safeIndex];
   if (!set) return null;
 
   return (
@@ -78,7 +115,7 @@ export default function SetStrip({ sets }: SetStripProps) {
                 </p>
                 <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2">
                   <span className="inline-flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
-                    <Users size={14} /> {set.member_count} members
+                    <Users size={14} /> {set.member_count ?? 0} members
                   </span>
                   <Link
                     href={`/sets/${set.id}`}
@@ -88,13 +125,33 @@ export default function SetStrip({ sets }: SetStripProps) {
                   </Link>
                 </div>
               </div>
-              <div className="hidden sm:flex h-32 md:h-40 w-32 md:w-44 flex-col items-center justify-center rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--primary-hover)] text-white shrink-0">
-                <span className="text-xl font-[family-name:var(--font-heading)] font-semibold text-white/80">
-                  Set
-                </span>
-                <span className="text-5xl font-[family-name:var(--font-heading)] font-semibold">
-                  {set.set_name}
-                </span>
+              <div className="hidden sm:block h-32 md:h-40 w-32 md:w-44 shrink-0">
+                {set.cover_image ? (
+                  <div className="relative w-full h-full rounded-xl overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={set.cover_image}
+                      alt={`Class of ${set.set_name}`}
+                      className="w-full h-full object-cover"
+                    />
+                    {set.cover_image_caption && (
+                      <div className="absolute inset-x-0 bottom-0 bg-black/55 backdrop-blur-sm px-2 py-1">
+                        <p className="text-white text-[11px] font-medium truncate">
+                          {set.cover_image_caption}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--primary-hover)] text-white">
+                    <span className="text-xl font-[family-name:var(--font-heading)] font-semibold text-white/80">
+                      Set
+                    </span>
+                    <span className="text-5xl font-[family-name:var(--font-heading)] font-semibold">
+                      {set.set_name}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>
@@ -119,7 +176,7 @@ export default function SetStrip({ sets }: SetStripProps) {
           </button>
         </div>
         <span className="text-xs text-[var(--text-muted)] tabular-nums">
-          {String(index + 1).padStart(2, "0")} / {sets.length}
+          {String(safeIndex + 1).padStart(2, "0")} / {rotation.length}
         </span>
       </div>
     </div>
