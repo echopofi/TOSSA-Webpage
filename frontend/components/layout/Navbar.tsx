@@ -48,7 +48,7 @@ export default function Navbar({ variant = "public", userName }: NavbarProps) {
             Our Sets
           </Link>
           <Link href="/exco" className="hover:text-[var(--primary)] transition-colors">
-            Our Exco
+            National Exco
           </Link>
           <Link href="/about" className="hover:text-[var(--primary)] transition-colors">
             About
@@ -88,7 +88,7 @@ export default function Navbar({ variant = "public", userName }: NavbarProps) {
             Our Sets
           </Link>
           <Link href="/exco" className="py-2 hover:text-[var(--primary)]" onClick={() => setOpen(false)}>
-            Our Exco
+            National Exco
           </Link>
           <Link href="/about" className="py-2 hover:text-[var(--primary)]" onClick={() => setOpen(false)}>
             About

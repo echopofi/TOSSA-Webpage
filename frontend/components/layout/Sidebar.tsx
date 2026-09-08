@@ -22,7 +22,7 @@ const navItems = [
   { href: "/sets",         icon: Users,           label: "My Set"      },
   { href: "/payments",     icon: CreditCard,      label: "Dues & Payments" },
   { href: "/elections",    icon: Vote,            label: "Elections"   },
-  { href: "/exco",         icon: Shield,          label: "Our Exco"    },
+  { href: "/exco",         icon: Shield,          label: "National Exco"    },
   { href: "/profile",      icon: User,            label: "My Profile"  },
   { href: "/admin",        icon: Megaphone,       label: "Admin Panel", admin: true },
   { href: "/admin/sets",   icon: Images,          label: "Set Media",   admin: true },

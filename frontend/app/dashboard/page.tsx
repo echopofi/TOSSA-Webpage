@@ -287,7 +287,7 @@ export default function DashboardPage() {
               { href: member?.set_id ? `/sets/${member.set_id}` : "/sets", icon: Users,    label: "Visit My Set Page"           },
               { href: "/payments",                                          icon: CreditCard, label: "Pay / View Dues"           },
               { href: "/elections",                                         icon: Vote,       label: "Elections & Contest Forms" },
-              { href: "/exco",                                              icon: Users,      label: "Our Executives (Exco)"      },
+              { href: "/exco",                                              icon: Users,      label: "National Exco"      },
               { href: member?.id ? `/members/${member.id}` : "/profile",   icon: User,       label: "View My Profile"            },
             ].map(({ href, icon: Icon, label }) => (
               <Link
