@@ -32,26 +32,24 @@ function ExcoPhoto({ src, alt }: { src: string; alt: string }) {
   return <img src={src} alt={alt} onError={() => setFailed(true)} className="w-full h-full object-cover" />;
 }
 
-function ExcoCard({ member, offset }: {
+function ExcoCard({ member, offset, cardWidth }: {
   member: (typeof EXCO_MEMBERS)[number];
   offset: number;
+  cardWidth: number;
 }) {
   const isCenter = offset === 0;
 
-  const gap = 0.08; // equal visual gap between each adjacent pair (in card-width units)
-  const s0 = 1;                      // center scale
-  const s1 = Math.pow(0.72, 1);      // ±1 scale
-  const s2 = Math.pow(0.72, 2);      // ±2 scale
-  const pos1 = (s0 / 2 + s1 / 2 + gap) * 100; // center-to-±1 distance as %
-  const pos2 = pos1 + (s1 / 2 + s2 / 2 + gap) * 100; // center-to-±2 distance as %
-  const xMap: Record<number, string> = {
-    0: "0%",
-    1: `${pos1}%`,
-    "-1": `-${pos1}%`,
-    2: `${pos2}%`,
-    "-2": `-${pos2}%`,
-  };
-  const x = xMap[offset] ?? (offset < 0 ? `-${pos2 + 100}%` : `${pos2 + 100}%`);
+  const gap = cardWidth * 0.06; // consistent pixel gap between adjacent card edges
+  const s1 = Math.pow(0.72, 1);
+  const s2 = Math.pow(0.72, 2);
+
+  // Distance from center of this card to center of container (in px)
+  // Each step adds half the current card's visual width + gap + half the next card's visual width
+  const pos1 = (cardWidth / 2) + gap + (cardWidth * s1 / 2);
+  const pos2 = pos1 + (cardWidth * s1 / 2) + gap + (cardWidth * s2 / 2);
+
+  const xMap: Record<number, number> = { 0: 0, 1: pos1, [-1]: -pos1, 2: pos2, [-2]: -pos2 };
+  const x = xMap[offset] ?? (offset < 0 ? -(pos2 + cardWidth) : pos2 + cardWidth);
   const rotate = 0;
 
   return (
@@ -71,7 +69,7 @@ function ExcoCard({ member, offset }: {
         className={`card overflow-hidden ${isCenter ? "" : "pointer-events-none"} ${
           Math.abs(offset) > 2 ? "invisible" : ""
         }`}
-        style={{ transform: "translateX(-50%)" }}
+        style={{ marginLeft: "-50%" }}
       >
         <div className="aspect-[3/4]">
           <ExcoPhoto src={member.image} alt={member.name} />
@@ -91,6 +89,18 @@ function ExcoCard({ member, offset }: {
 
 export default function ExcoPage() {
   const [focus, setFocus] = useState(0);
+
+  // Derive card pixel width from Tailwind breakpoints to match w-36/md:w-52/lg:w-56
+  const [cardWidth, setCardWidth] = useState(144);
+  useEffect(() => {
+    function updateWidth() {
+      const w = window.innerWidth;
+      setCardWidth(w >= 1024 ? 224 : w >= 768 ? 208 : 144);
+    }
+    updateWidth();
+    window.addEventListener("resize", updateWidth);
+    return () => window.removeEventListener("resize", updateWidth);
+  }, []);
 
   // Auto-advance every 4 seconds
   useEffect(() => {
@@ -114,9 +124,9 @@ export default function ExcoPage() {
   const focused = EXCO_MEMBERS[focus % COUNT];
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8 items-center w-full">
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <Reveal variants={fadeUp} className="flex items-start justify-between gap-4">
+      <Reveal variants={fadeUp} className="flex items-start justify-between gap-4 w-full">
         <div>
           <h1 className="text-2xl md:text-3xl font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)]">
             National Exco
@@ -131,14 +141,17 @@ export default function ExcoPage() {
       </Reveal>
 
       {/* ── Layered photo carousel ─────────────────────────────────────────── */}
-      <div className="relative h-[19rem] sm:h-[24rem] md:h-[26rem] overflow-hidden" aria-live="polite">
+      <div className="w-full flex justify-center">
+        <div className="relative w-full h-[19rem] sm:h-[24rem] md:h-[26rem] overflow-hidden" aria-live="polite">
         {EXCO_MEMBERS.map((member, i) => (
           <ExcoCard
             key={member.id}
             member={member}
             offset={relativeOffset(i, focus)}
+            cardWidth={cardWidth}
           />
         ))}
+        </div>
       </div>
 
       {/* ── Focused officer details + controls ─────────────────────────────── */}
@@ -175,7 +188,7 @@ export default function ExcoPage() {
       </div>
 
       {/* ── Note ───────────────────────────────────────────────────────────── */}
-      <p className="text-xs text-[var(--text-muted)] text-center">
+      <p className="text-xs text-[var(--text-muted)] text-center w-full">
         Exco members are appointed by the association after each election. Officers change per elected term.
       </p>
     </div>
