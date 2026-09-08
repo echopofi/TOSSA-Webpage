@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { UsersRound, ChevronLeft, ChevronRight } from "lucide-react";
 import { EXCO_MEMBERS, initials } from "@/lib/exco-data";
@@ -39,27 +39,27 @@ function ExcoCard({ member, offset }: {
   const isCenter = offset === 0;
   const left = offset < 0;
 
-  const x = offset === 0 ? "0%" : (left ? -1 : 1) * (Math.abs(offset) === 1 ? 130 : 270) + "%";
-  const rotate = isCenter ? 0 : left ? -7 : 7;
+  const x = offset === 0 ? "0%" : (left ? -1 : 1) * (Math.abs(offset) === 1 ? 65 : 130) + "%";
+  const rotate = 0;
 
   return (
     <motion.div
       animate={{
         x,
         rotate,
-        scale: isCenter ? 1 : 0.84,
+        scale: isCenter ? 1 : 0.72,
         opacity: Math.abs(offset) > 2 ? 0 : isCenter ? 1 : 0.9,
         zIndex: isCenter ? 30 : 20 - Math.abs(offset) * 5,
       }}
       transition={{ type: "spring", stiffness: 260, damping: 26 }}
-      className="absolute left-1/2 top-1/2 w-36 md:w-52 lg:w-56"
+      className="absolute left-1/2 top-[10%] w-36 md:w-52 lg:w-56"
       aria-hidden={!isCenter}
     >
       <div
         className={`card overflow-hidden ${isCenter ? "" : "pointer-events-none"} ${
           Math.abs(offset) > 2 ? "invisible" : ""
         }`}
-        style={{ transform: "translate(-50%, -50%)" }}
+        style={{ transform: "translateX(-50%)" }}
       >
         <div className="aspect-[3/4]">
           <ExcoPhoto src={member.image} alt={member.name} />
@@ -79,6 +79,14 @@ function ExcoCard({ member, offset }: {
 
 export default function ExcoPage() {
   const [focus, setFocus] = useState(0);
+
+  // Auto-advance every 2.5 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setFocus((prev) => (prev + 1 + COUNT) % COUNT);
+    }, 2500);
+    return () => clearInterval(timer);
+  }, []);
 
   const go = (delta: number) =>
     setFocus((prev) => (prev + delta + COUNT) % COUNT);
