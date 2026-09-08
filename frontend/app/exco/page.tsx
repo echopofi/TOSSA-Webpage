@@ -39,7 +39,20 @@ function ExcoCard({ member, offset }: {
   const isCenter = offset === 0;
   const left = offset < 0;
 
-  const x = offset === 0 ? "0%" : (left ? -1 : 1) * (Math.abs(offset) === 1 ? 65 : 130) + "%";
+  const gap = 0.08; // equal visual gap between each adjacent pair (in card-width units)
+  const s0 = 1;                      // center scale
+  const s1 = Math.pow(0.72, 1);      // ±1 scale
+  const s2 = Math.pow(0.72, 2);      // ±2 scale
+  const pos1 = (s0 / 2 + s1 / 2 + gap) * 100; // center-to-±1 distance as %
+  const pos2 = pos1 + (s1 / 2 + s2 / 2 + gap) * 100; // center-to-±2 distance as %
+  const xMap: Record<number, string> = {
+    0: "0%",
+    1: `${pos1}%`,
+    "-1": `-${pos1}%`,
+    2: `${pos2}%`,
+    "-2": `-${pos2}%`,
+  };
+  const x = xMap[offset] ?? (offset < 0 ? `-${pos2 + 100}%` : `${pos2 + 100}%`);
   const rotate = 0;
 
   return (
@@ -47,7 +60,7 @@ function ExcoCard({ member, offset }: {
       animate={{
         x,
         rotate,
-        scale: isCenter ? 1 : 0.72,
+        scale: isCenter ? 1 : Math.pow(0.72, Math.abs(offset)),
         opacity: Math.abs(offset) > 2 ? 0 : isCenter ? 1 : 0.9,
         zIndex: isCenter ? 30 : 20 - Math.abs(offset) * 5,
       }}
@@ -80,11 +93,11 @@ function ExcoCard({ member, offset }: {
 export default function ExcoPage() {
   const [focus, setFocus] = useState(0);
 
-  // Auto-advance every 2.5 seconds
+  // Auto-advance every 4 seconds
   useEffect(() => {
     const timer = setInterval(() => {
       setFocus((prev) => (prev + 1 + COUNT) % COUNT);
-    }, 2500);
+    }, 4000);
     return () => clearInterval(timer);
   }, []);
 
