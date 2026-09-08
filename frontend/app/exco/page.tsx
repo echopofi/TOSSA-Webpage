@@ -37,7 +37,6 @@ function ExcoCard({ member, offset }: {
   offset: number;
 }) {
   const isCenter = offset === 0;
-  const left = offset < 0;
 
   const gap = 0.08; // equal visual gap between each adjacent pair (in card-width units)
   const s0 = 1;                      // center scale
