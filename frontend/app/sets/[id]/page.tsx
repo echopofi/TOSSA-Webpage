@@ -122,7 +122,7 @@ export default function SetPage({ params }: { params: Promise<{ id: string }> })
                   )}
                 </motion.div>
                 {set.description && (
-                  <motion.p variants={fadeUp} className="text-[var(--text-body)] leading-relaxed text-sm mt-5 max-w-xl">
+                  <motion.p variants={fadeUp} className="text-[var(--text-body)] leading-relaxed text-sm mt-5 max-w-xl whitespace-pre-wrap">
                     {set.description}
                   </motion.p>
                 )}

@@ -73,7 +73,7 @@ export default function SetStrip({ sets }: SetStripProps) {
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--primary-light)] text-[var(--primary)] text-xs font-semibold">
                   <GraduationCap size={13} /> Class of {set.set_name}
                 </span>
-                <p className="mt-4 text-sm md:text-base text-[var(--text-muted)] leading-relaxed">
+                <p className="mt-4 text-sm md:text-base text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap">
                   {set.description}
                 </p>
                 <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2">

@@ -77,7 +77,7 @@ export default function SetsPage() {
                         {set.start_year} – {set.end_year}
                       </p>
                       {set.description && (
-                        <p className="text-sm text-[var(--text-muted)] mt-2 leading-relaxed line-clamp-2">
+                        <p className="text-sm text-[var(--text-muted)] mt-2 leading-relaxed line-clamp-2 whitespace-pre-wrap">
                           {set.description}
                         </p>
                       )}
