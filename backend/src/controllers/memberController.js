@@ -217,7 +217,7 @@ async function listSets(req, res) {
         _count: { select: { setMembers: true } },
         setImages: { orderBy: { createdAt: 'asc' } },
       },
-      orderBy: { startYear: 'desc' },
+      orderBy: { endYear: 'asc' },
       where: { isActive: true },
     });
 
