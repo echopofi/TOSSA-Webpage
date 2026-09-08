@@ -253,6 +253,9 @@ async function createSet(req, res) {
     if (!setName || !startYear || !endYear) {
       return res.status(400).json({ error: 'setName, startYear, endYear are required' });
     }
+    if (endYear - startYear !== 6) {
+      return res.status(400).json({ error: 'A set must span exactly 6 years (endYear - startYear must equal 6)' });
+    }
     if (coverImage !== undefined && !isValidImageUrl(coverImage)) {
       return res.status(400).json({ error: 'coverImage must be an uploaded image URL' });
     }
@@ -303,6 +306,23 @@ async function updateSet(req, res) {
         return res.status(400).json({ error: 'coverImage must be an uploaded image URL' });
       }
       data.coverImage = coverImage || null;
+    }
+
+    // Enforce the 6-year span against the effective (resulting) values, since
+    // startYear/endYear may be updated independently via partial PATCH-style PUT.
+    if (startYear !== undefined || endYear !== undefined) {
+      const existingYear = await prisma.graduationSet.findUnique({
+        where: { id: req.params.id },
+        select: { startYear: true, endYear: true },
+      });
+      if (!existingYear) {
+        return res.status(404).json({ error: 'Set not found' });
+      }
+      const effectiveStart = startYear !== undefined ? startYear : existingYear.startYear;
+      const effectiveEnd   = endYear !== undefined ? endYear : existingYear.endYear;
+      if (effectiveEnd - effectiveStart !== 6) {
+        return res.status(400).json({ error: 'A set must span exactly 6 years (endYear - startYear must equal 6)' });
+      }
     }
 
     let oldCoverUrl = null;
