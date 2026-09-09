@@ -23,6 +23,7 @@ import {
 import type { Member, DuesSummary, Announcement, ElectionApplication } from "@/lib/types";
 import { formatNaira, formatDate, initials } from "@/lib/utils";
 import MemberIdCard from "@/components/id/MemberIdCard";
+import BioDataBanner from "@/components/bio/BioDataBanner";
 
 export default function DashboardPage() {
   const [member, setMember]               = useState<Member | null>(null);
@@ -79,6 +80,9 @@ export default function DashboardPage() {
           />
         </div>
       </div>
+
+      {/* ── Bio Data notification (hides once submitted) ────────────────────── */}
+      <BioDataBanner />
 
       {/* ── Member ID card + Elections ─────────────────────────────────────── */}
       {member && (

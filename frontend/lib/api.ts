@@ -51,6 +51,8 @@ import type {
   CloudinarySignature,
   AssignOfficerPayload,
   PendingMember,
+  BioData,
+  BioDataPayload,
 } from "@/lib/types";
 
 import {
@@ -541,6 +543,48 @@ export async function apiChangePassword(
 export async function apiLogout(): Promise<ApiSuccess<null>> {
   await delay(200);
   return ok(null);
+}
+
+// ─── Bio Data (member declaration + consent form) ─────────────────────────────
+
+/**
+ * GET /api/bio-data — returns the current member's bio data record.
+ * Returns { bioData: null } when the member has not filled the form yet, and
+ * null from the API layer when no backend/token is available (the dashboard
+ * then shows the "fill Bio Data" prompt).
+ */
+export async function apiGetBioData(): Promise<ApiSuccess<BioData | null>> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl || !getAccessToken()) return ok(null);
+
+  const res = await authedFetch("/api/bio-data");
+  const json = (await res.json()) as { bioData?: BioData | null } | undefined;
+  return ok(json?.bioData ?? null);
+}
+
+/**
+ * PUT /api/bio-data — create or update the current member's bio data.
+ * The backend rejects the write when any required field is missing/empty or
+ * either Section I consent is unticked, so this only succeeds on a full,
+ * validated record.
+ */
+export async function apiSubmitBioData(
+  payload: BioDataPayload
+): Promise<ApiSuccess<BioData>> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl || !getAccessToken()) {
+    throw new ApiRequestError(0, "Bio data requires the backend. Please sign in again.");
+  }
+  const res = await authedFetch("/api/bio-data", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+  const json = (await res.json()) as { bioData?: BioData } | undefined;
+  const bioData = json?.bioData;
+  if (!bioData) {
+    throw new ApiRequestError(0, "Unexpected server response. Please try again.");
+  }
+  return ok(bioData);
 }
 
 // ─── Members ─────────────────────────────────────────────────────────────────

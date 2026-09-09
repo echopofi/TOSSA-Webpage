@@ -18,6 +18,7 @@ const adminRoutes = require('./routes/admin');
 const electionRoutes = require('./routes/elections');
 const excoRoutes = require('./routes/exco');
 const uploadRoutes = require('./routes/upload');
+const bioDataRoutes = require('./routes/bioData');
 
 const app = express();
 
@@ -47,6 +48,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/elections', electionRoutes);
 app.use('/api/exco', excoRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/bio-data', bioDataRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

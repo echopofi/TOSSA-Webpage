@@ -328,6 +328,64 @@ export interface PendingMember {
   registered_at: string;  // users.created_at
 }
 
+// ─── Bio Data (member declaration + consent form) ─────────────────────────────
+
+export type BloodGroup = "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-";
+
+export type OccupationCategory =
+  | "employed"
+  | "self_employed"
+  | "entrepreneur"
+  | "student"
+  | "civil_public_servant"
+  | "clergy_ministry"
+  | "professional_practice"
+  | "retired"
+  | "unemployed"
+  | "other";
+
+/** Mirrors the bio_data table (joined 1:1 with members) */
+export interface BioData {
+  id: string;
+  member_id: string;
+  full_name: string;
+  former_nickname?: string;
+  gender: string;
+  set_year: number;                 // admission year
+  phone: string;
+  email: string;
+  city: string;
+  state: string;
+  country: string;
+  blood_group: BloodGroup;
+  display_blood_group_on_id: boolean;
+  occupation_category: OccupationCategory;
+  specialization: string;           // profession / area of specialization
+  membership_declaration: boolean;
+  data_privacy_consent: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** PUT /api/bio-data payload (camelCase, matches the backend controller) */
+export interface BioDataPayload {
+  fullName: string;
+  formerNickname?: string;
+  gender: string;
+  setYear: number;
+  phone: string;
+  email: string;
+  city: string;
+  state: string;
+  country: string;
+  bloodGroup: BloodGroup;
+  displayBloodGroupOnId: boolean;
+  occupationCategory: OccupationCategory;
+  specialization: string;
+  membershipDeclaration: boolean;
+  dataPrivacyConsent: boolean;
+}
+
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
 export interface PaginatedResponse<T> {

@@ -59,8 +59,37 @@ model Member {
   targetAnnouncements  Announcement[]       @relation("TargetMember")
   electionApplications ElectionApplication[]
   excoOfficers         ExcoOfficer[]
+  bioData              BioData?
 
   @@map("members")
+}
+
+// ─── Bio Data (member declaration + consent form) ─────────────────────────────
+
+model BioData {
+  id                      String   @id @default(uuid()) @db.Uuid
+  memberId                String   @unique @map("member_id") @db.Uuid
+  fullName                String   @map("full_name") @db.VarChar(255)
+  formerNickname          String?  @map("former_nickname") @db.VarChar(100)
+  gender                  String   @db.VarChar(20)
+  setYear                 Int      @map("set_year") @db.SmallInt
+  phone                   String   @db.VarChar(30)
+  email                   String   @db.VarChar(254)
+  city                    String   @db.VarChar(120)
+  state                   String   @db.VarChar(120)
+  country                 String   @db.VarChar(120)
+  bloodGroup              String   @map("blood_group") @db.VarChar(10)
+  displayBloodGroupOnId   Boolean  @default(false) @map("display_blood_group_on_id")
+  occupationCategory      String   @map("occupation_category") @db.VarChar(50)
+  specialization          String   @db.VarChar(255)
+  membershipDeclaration   Boolean  @map("membership_declaration")
+  dataPrivacyConsent      Boolean  @map("data_privacy_consent")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @default(now()) @map("updated_at")
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@map("bio_data")
 }
 
 model GraduationSet {
