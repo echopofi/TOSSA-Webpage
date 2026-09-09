@@ -308,10 +308,9 @@ export async function apiMe(): Promise<ApiSuccess<AuthMeResponse>> {
     const json = (await res.json()) as
       | {
           user?: { id: string; email: string; fullName: string; role?: string; isVerified?: boolean };
-          member?: {
+member?: {
             id: string;
             matricNumber?: string | null;
-            occupation?: string | null;
             gender?: string | null;
             phone?: string | null;
             address?: string | null;
@@ -342,7 +341,6 @@ export async function apiMe(): Promise<ApiSuccess<AuthMeResponse>> {
         full_name: u.fullName,
         email: u.email,
         matric_number: json?.member?.matricNumber ?? undefined,
-        occupation: json?.member?.occupation ?? undefined,
         gender: json?.member?.gender ?? undefined,
         phone: json?.member?.phone ?? undefined,
         address: json?.member?.address ?? undefined,
@@ -464,7 +462,6 @@ export async function apiUpdateProfile(payload: {
   bio?: string;
   profileImage?: string;
   matricNumber?: string;
-  occupation?: string;
 }): Promise<ApiSuccess<{ user: AuthUser; member: Member }>> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   if (!apiUrl || !getAccessToken()) {
@@ -482,7 +479,6 @@ export async function apiUpdateProfile(payload: {
         member?: {
           id?: string;
           matricNumber?: string | null;
-          occupation?: string | null;
           gender?: string | null;
           phone?: string | null;
           address?: string | null;
@@ -502,7 +498,6 @@ export async function apiUpdateProfile(payload: {
     full_name: u.fullName ?? "",
     email: u.email ?? "",
     matric_number: m?.matricNumber ?? undefined,
-    occupation: m?.occupation ?? undefined,
     gender: m?.gender ?? undefined,
     phone: m?.phone ?? undefined,
     address: m?.address ?? undefined,
@@ -619,7 +614,6 @@ export async function apiGetMember(id: string): Promise<ApiSuccess<Member>> {
           fullName?: string;
           email?: string | null;
           matricNumber?: string | null;
-          occupation?: string | null;
           gender?: string | null;
           phone?: string | null;
           address?: string | null;
@@ -641,7 +635,6 @@ export async function apiGetMember(id: string): Promise<ApiSuccess<Member>> {
       full_name: json.fullName,
       email: json.email ?? undefined,
       matric_number: json.matricNumber ?? undefined,
-      occupation: json.occupation ?? undefined,
       gender: json.gender ?? undefined,
       phone: json.phone ?? undefined,
       address: json.address ?? undefined,

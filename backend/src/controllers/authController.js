@@ -16,8 +16,6 @@ const NAME_MAX = 255;
 const PHONE_MAX = 30;
 const MATRIC_MAX = 50;
 const PASSWORD_MAX = 128;
-// Allowed values for the member's current occupation (profile edit single-select).
-const OCCUPATIONS = ['student', 'unemployed', 'employed', 'prefer_not_to_say'];
 // matches the prisma @db.Uuid ids — a non-UUID setId (e.g. the old "set_2005"
 // mock ids) must fail with a clean 400, not a Prisma 500.
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -340,7 +338,6 @@ async function me(req, res) {
       member: user.member ? {
         id: user.member.id,
         matricNumber: user.member.matricNumber,
-        occupation: user.member.occupation,
         gender: user.member.gender,
         phone: user.member.phone,
         address: user.member.address,
@@ -367,7 +364,7 @@ async function me(req, res) {
 // PATCH /api/auth/me — the authenticated user edits their own profile.
 // Email and role are intentionally immutable here (email ownership changes are
 // out of scope; role changes are admin-only via the admin routes).
-const PROFILE_FIELDS = ['fullName', 'gender', 'phone', 'address', 'bio', 'profileImage', 'matricNumber', 'occupation'];
+const PROFILE_FIELDS = ['fullName', 'gender', 'phone', 'address', 'bio', 'profileImage', 'matricNumber'];
 
 async function updateProfile(req, res) {
   try {
@@ -404,9 +401,6 @@ async function updateProfile(req, res) {
     if (clean.gender !== undefined && clean.gender.length > 20) {
       return res.status(400).json({ error: 'Gender is invalid' });
     }
-    if (clean.occupation !== undefined && !OCCUPATIONS.includes(clean.occupation)) {
-      return res.status(400).json({ error: 'Occupation is invalid' });
-    }
 
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });
     if (!user) {
@@ -418,7 +412,7 @@ async function updateProfile(req, res) {
     }
 
     const memberPayload = {};
-    for (const key of ['gender', 'phone', 'address', 'bio', 'profileImage', 'matricNumber', 'occupation']) {
+    for (const key of ['gender', 'phone', 'address', 'bio', 'profileImage', 'matricNumber']) {
       if (clean[key] !== undefined) memberPayload[key] = clean[key];
     }
 
@@ -449,7 +443,6 @@ async function updateProfile(req, res) {
         ? {
             id: updated.member.id,
             matricNumber: updated.member.matricNumber,
-            occupation: updated.member.occupation,
             gender: updated.member.gender,
             phone: updated.member.phone,
             address: updated.member.address,
