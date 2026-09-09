@@ -39,7 +39,7 @@ function ExcoCard({ member, offset, cardWidth }: {
 }) {
   const isCenter = offset === 0;
 
-  const gap = cardWidth * 0.06; // consistent pixel gap between adjacent card edges
+  const gap = 0; // flush stacked cards: zero spacing between adjacent card edges
   const s1 = Math.pow(0.72, 1);
   const s2 = Math.pow(0.72, 2);
 
@@ -69,7 +69,7 @@ function ExcoCard({ member, offset, cardWidth }: {
         className={`card overflow-hidden ${isCenter ? "" : "pointer-events-none"} ${
           Math.abs(offset) > 2 ? "invisible" : ""
         }`}
-        style={{ marginLeft: "-50%" }}
+        style={{ transform: "translateX(-50%)" }}
       >
         <div className="aspect-[3/4]">
           <ExcoPhoto src={member.image} alt={member.name} />
