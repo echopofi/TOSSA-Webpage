@@ -70,7 +70,7 @@ import {
   MOCK_EXCO_OFFICERS,
 } from "@/lib/mockData";
 
-import { getCurrentUser, getAccessToken } from "@/lib/session";
+import { getCurrentUser, getAccessToken, saveAccessToken, clearAccessToken, clearCurrentUser } from "@/lib/session";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -96,25 +96,26 @@ export class ApiRequestError extends Error {
  * Shared fetch for authenticated endpoints. Attaches the Bearer access token
  * saved at login (see lib/session.ts) and normalises errors into
  * ApiRequestError so callers branch on the status code.
+ *
+ * On a 401 it transparently attempts a token refresh (single-flight — one
+ * refresh for however many requests hit 401 at once) and retries the request
+ * once with the fresh token. If the refresh itself fails, the session is
+ * expired and the user is redirected to /login.
  */
-async function authedFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  const { getAccessToken } = await import("@/lib/session");
-  const token = getAccessToken();
+export async function authedFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  let res = await rawFetch(path, init);
 
-  let res: Response;
-  try {
-    res = await fetch(`${apiUrl}${path}`, {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(init.headers ?? {}),
-      },
-      credentials: "include",
-    });
-  } catch {
-    throw new ApiRequestError(0, "Unable to reach the server. Please try again.");
+  if (res.status === 401) {
+    const refreshed = await refreshTokenFlow();
+    if (refreshed) {
+      // Retry the original request ONCE with the new Bearer token. A second
+      // 401 is a genuine auth failure and falls through to the error path —
+      // never loop the refresh.
+      res = await rawFetch(path, init);
+    } else {
+      // refresh failed: expireSession already cleared tokens + redirected.
+      throw new ApiRequestError(401, "Your session has expired. Please sign in again.");
+    }
   }
 
   if (!res.ok) {
@@ -128,6 +129,77 @@ async function authedFetch(path: string, init: RequestInit = {}): Promise<Respon
     throw new ApiRequestError(res.status, message);
   }
   return res;
+}
+
+async function rawFetch(path: string, init: RequestInit): Promise<Response> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  const token = getAccessToken();
+
+  try {
+    return await fetch(`${apiUrl}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init.headers ?? {}),
+      },
+      credentials: "include",
+    });
+  } catch {
+    throw new ApiRequestError(0, "Unable to reach the server. Please try again.");
+  }
+}
+
+// ─── Token refresh (single-flight) ─────────────────────────────────────────────
+// Multiple 401s arriving at the same time (several requests in flight) share ONE
+// refresh request: the first caller kicks it off, everyone else awaits the same
+// promise and retries once the new token is available. Failing that, the whole
+// session is expired client-side exactly once.
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function refreshTokenFlow(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      try {
+        const res = await apiRefresh(); // POST /api/auth/refresh (refresh-cookie auth)
+        saveAccessToken(res.data.access_token);
+        return true;
+      } catch {
+        expireSession();
+        return false;
+      } finally {
+        refreshInFlight = null;
+      }
+    })();
+  }
+  return refreshInFlight;
+}
+
+/**
+ * Hard-expire the client session after a failed refresh: drop the access token
+ * + identity, best-effort revoke the server refresh cookie, then send the user
+ * to /login (once, and only if they aren't already there).
+ */
+export function expireSession(): void {
+  clearAccessToken();
+  clearCurrentUser();
+  apiLogout().catch(() => {
+    /* best-effort revoke — a stale refresh cookie is harmless on the login page */
+  });
+  redirectToLogin();
+}
+
+let redirectToLogin: () => void = () => {
+  if (typeof window !== "undefined" && window.location) {
+    if (window.location.pathname !== "/login") {
+      window.location.assign("/login");
+    }
+  }
+};
+
+/** Test seam: swap the post-refresh-failure redirect (defaults to /login). */
+export function __setRedirectToLogin(fn: () => void): void {
+  redirectToLogin = fn;
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -447,10 +519,44 @@ export async function loadMember(): Promise<Member | null> {
   }
 }
 
-/** POST /api/auth/refresh */
+/**
+ * POST /api/auth/refresh — exchanges the httpOnly refresh cookie for a fresh
+ * access token. The backend rotates the refresh cookie in the same response
+ * (new httpOnly cookie set server-side), so there's nothing to persist here.
+ */
 export async function apiRefresh(): Promise<ApiSuccess<{ access_token: string }>> {
-  await delay(200);
-  return ok({ access_token: "mock_access_token_refreshed" });
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) {
+    throw new ApiRequestError(0, "Session refresh requires the backend.");
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${apiUrl}/api/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include", // refresh token lives in an httpOnly cookie
+    });
+  } catch {
+    throw new ApiRequestError(0, "Unable to reach the server. Please try again.");
+  }
+
+  if (!res.ok) {
+    let message = "Unable to refresh session";
+    try {
+      const body = await res.json();
+      message = typeof body?.error === "string" ? body.error : message;
+    } catch {
+      /* non-JSON error body — keep default */
+    }
+    throw new ApiRequestError(res.status, message);
+  }
+
+  const json = (await res.json()) as { accessToken?: string } | undefined;
+  if (!json?.accessToken) {
+    throw new ApiRequestError(0, "Unexpected server response. Please try again.");
+  }
+  return ok({ access_token: json.accessToken });
 }
 
 /** PATCH /api/auth/me — authenticated user edits their own profile. */
@@ -534,9 +640,23 @@ export async function apiChangePassword(
   return ok({ message: "Password changed successfully" });
 }
 
-/** POST /api/auth/logout */
+/**
+ * POST /api/auth/logout — revokes the refresh cookie server-side.
+ * Best-effort: still resolves ok(null) so local sign-out always completes.
+ */
 export async function apiLogout(): Promise<ApiSuccess<null>> {
-  await delay(200);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (apiUrl) {
+    try {
+      await fetch(`${apiUrl}/api/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch {
+      /* offline — nothing else to revoke; fall through */
+    }
+  }
   return ok(null);
 }
 
