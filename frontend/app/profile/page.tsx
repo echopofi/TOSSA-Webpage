@@ -39,7 +39,6 @@ interface ProfileForm {
   fullName: string;
   gender: string;
   phone: string;
-  occupation: string;
   address: string;
   bio: string;
 }
@@ -77,7 +76,6 @@ export default function ProfilePage() {
           fullName: res.data.user.full_name,
           gender: m.gender ? m.gender.charAt(0).toUpperCase() + m.gender.slice(1) : "",
           phone: m.phone ?? "",
-          occupation: m.occupation ?? "",
           address: m.address ?? "",
           bio: m.bio ?? "",
         });
@@ -105,7 +103,6 @@ export default function ProfilePage() {
             fullName: session.full_name,
             gender: session.gender ?? "",
             phone: session.phone ?? "",
-            occupation: "",
             address: session.address ?? "",
             bio: session.bio ?? "",
           });
@@ -145,7 +142,6 @@ export default function ProfilePage() {
         fullName: data.fullName.trim(),
         gender: data.gender || undefined,
         phone: data.phone.trim() || undefined,
-        occupation: data.occupation || undefined,
         address: data.address.trim() || undefined,
         bio: data.bio.trim() || undefined,
         profileImage: photo || undefined,
@@ -168,7 +164,6 @@ export default function ProfilePage() {
         set_name: prev?.set_name,
         role_in_set: prev?.role_in_set,
         matric_number: updated.member.matric_number,
-        occupation: updated.member.occupation,
       }));
       saveCurrentUser({
         full_name: updated.user.full_name,
@@ -335,14 +330,6 @@ export default function ProfilePage() {
                     <span className="truncate text-xs">{member.address}</span>
                   </div>
                 )}
-                {member.occupation && (
-                  <div className="flex items-center gap-2 text-[var(--text-muted)]">
-                    <UserCircle2 size={14} className="shrink-0" />
-                    <span className="truncate text-xs capitalize">
-                      {member.occupation.replace(/_/g, " ")}
-                    </span>
-                  </div>
-                )}
               </div>
 
               <div className="w-full border-t border-[var(--border-subtle)] pt-4 flex items-center justify-between text-xs text-[var(--text-muted)]">
@@ -416,17 +403,6 @@ export default function ProfilePage() {
                     })}
                   />
                 </div>
-                <Select
-                  label="Occupation Status"
-                  placeholder="Select your occupation status"
-                  options={[
-                    { value: "student", label: "Student" },
-                    { value: "unemployed", label: "Unemployed" },
-                    { value: "employed", label: "Employed" },
-                    { value: "prefer_not_to_say", label: "Prefer not to say" },
-                  ]}
-                  {...profileForm.register("occupation")}
-                />
                 <Input
                   label="Address"
                   placeholder="City, State, Country"
