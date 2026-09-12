@@ -36,26 +36,36 @@ export default function ExcoAssignmentPanel() {
   const debounceRef                   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function load() {
-    const [pRes, eRes] = await Promise.all([
-      apiGetElectionPositions(),
-      apiGetExcoOfficers(),
-    ]);
-    setPositions(pRes.data);
-    setOfficers(eRes.data.filter((o) => o.is_current));
-    setLoading(false);
+    try {
+      const [pRes, eRes] = await Promise.all([
+        apiGetElectionPositions(),
+        apiGetExcoOfficers(),
+      ]);
+      setPositions(pRes.data);
+      setOfficers(eRes.data.filter((o) => o.is_current));
+    } catch {
+      setMessage("Couldn't load the current exco from the server.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [pRes, eRes] = await Promise.all([
-        apiGetElectionPositions(),
-        apiGetExcoOfficers(),
-      ]);
-      if (cancelled) return;
-      setPositions(pRes.data);
-      setOfficers(eRes.data.filter((o) => o.is_current));
-      setLoading(false);
+      try {
+        const [pRes, eRes] = await Promise.all([
+          apiGetElectionPositions(),
+          apiGetExcoOfficers(),
+        ]);
+        if (cancelled) return;
+        setPositions(pRes.data);
+        setOfficers(eRes.data.filter((o) => o.is_current));
+      } catch {
+        if (!cancelled) setMessage("Couldn't load the current exco from the server.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
     return () => {
       cancelled = true;

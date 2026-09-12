@@ -67,7 +67,6 @@ import {
   MOCK_MILESTONES,
   MOCK_ELECTION_POSITIONS,
   MOCK_ELECTION_APPLICATIONS,
-  MOCK_EXCO_OFFICERS,
 } from "@/lib/mockData";
 
 import { getCurrentUser, getAccessToken, saveAccessToken, clearAccessToken, clearCurrentUser } from "@/lib/session";
@@ -1175,10 +1174,53 @@ export async function apiSendAnnouncement(
 
 // ─── Exco ─────────────────────────────────────────────────────────────────────
 
-/** GET /api/exco — public, current officers only */
+/** Shape returned by the public GET /api/exco endpoint. */
+interface BackendExcoOfficer {
+  id: string;
+  positionId: string;
+  position: string;
+  termLabel: string;
+  startedAt: string;
+  member: {
+    id: string;
+    fullName: string;
+    profileImage?: string | null;
+    matricNumber?: string | null;
+    set_name?: string | null;
+    set_id?: string | null;
+  };
+}
+
+/** GET /api/exco — public, current officers only (DB-backed, no mock fallback) */
 export async function apiGetExcoOfficers(): Promise<ApiSuccess<ExcoOfficer[]>> {
-  await delay();
-  return ok(MOCK_EXCO_OFFICERS);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) {
+    return ok([]);
+  }
+
+  const res = await rawFetch("/api/exco", { method: "GET" });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiRequestError(res.status, body?.error ?? "Failed to load exco officers");
+  }
+
+  const json = (await res.json()) as { officers?: BackendExcoOfficer[] } | undefined;
+  const officers = (json?.officers ?? []).map((o) => ({
+    id: o.id,
+    member_id: o.member.id,
+    position_id: o.positionId,
+    position: o.position,
+    term_label: o.termLabel,
+    is_current: true,
+    started_at: o.startedAt,
+    member: {
+      id: o.member.id,
+      full_name: o.member.fullName,
+      profile_image: o.member.profileImage ?? undefined,
+      set_name: o.member.set_name ?? undefined,
+    },
+  }));
+  return ok(officers);
 }
 
 // ─── Cloudinary upload ─────────────────────────────────────────────────────────
