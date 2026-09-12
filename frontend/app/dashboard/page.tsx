@@ -24,6 +24,7 @@ import type { Member, DuesSummary, Announcement, ElectionApplication } from "@/l
 import { formatNaira, formatDate, initials } from "@/lib/utils";
 import MemberIdCard from "@/components/id/MemberIdCard";
 import BioDataBanner from "@/components/bio/BioDataBanner";
+import NationalExcoStrip from "@/components/exco/NationalExcoStrip";
 
 export default function DashboardPage() {
   const [member, setMember]               = useState<Member | null>(null);
@@ -120,7 +121,7 @@ export default function DashboardPage() {
                         No applications yet
                       </p>
                       <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                        Contest for a position in this session's elections.
+                        Contest for a position in this session&apos;s elections.
                       </p>
                     </div>
                     <Link
@@ -276,6 +277,9 @@ export default function DashboardPage() {
           </table>
         </div>
       </Card>
+
+      {/* ── National Exco (real committee photos) ──────────────────────────── */}
+      <NationalExcoStrip />
 
       {/* ── Quick links + Announcements ───────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

@@ -38,6 +38,7 @@ import { formatDate } from "@/lib/utils";
 import ElectionReviewPanel from "@/components/admin/ElectionReviewPanel";
 import ExcoAssignmentPanel from "@/components/admin/ExcoAssignmentPanel";
 import PendingMembersPanel from "@/components/admin/PendingMembersPanel";
+import NationalExcoStrip from "@/components/exco/NationalExcoStrip";
 
 // ─── Form shape ───────────────────────────────────────────────────────────────
 
@@ -143,7 +144,7 @@ function MemberSearchField({
 
       {open && !searching && results.length === 0 && query.trim() && (
         <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-white border border-[var(--border-subtle)] rounded-xl shadow-lg px-4 py-3 text-sm text-[var(--text-muted)]">
-          No members found matching "{query}"
+          No members found matching &quot;{query}&quot;
         </div>
       )}
 
@@ -516,6 +517,7 @@ export default function AdminPage() {
           Elections & Exco
         </h2>
         <div className="flex flex-col gap-6">
+          <NationalExcoStrip />
           <ElectionReviewPanel />
           <ExcoAssignmentPanel />
         </div>
