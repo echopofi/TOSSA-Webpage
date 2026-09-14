@@ -188,7 +188,7 @@ model Payment {
   paidAt            DateTime? @map("paid_at")
   createdAt         DateTime @default(now()) @map("created_at")
 
-  member Member               @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  member Member               @relation(fields: [memberId], references: [id], onDelete: Cascade)
   ledger PaymentTransaction[]
 
   @@index([memberId], map: "idx_payments_member_id")
@@ -223,7 +223,7 @@ model DuesPayment {
   paidAt            DateTime? @map("paid_at")
   createdAt         DateTime @default(now()) @map("created_at")
 
-  member Member        @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  member Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
   cycle  DuesCycle     @relation(fields: [duesCycleId], references: [id], onDelete: Restrict)
   ledger PaymentTransaction[]
 
@@ -244,9 +244,9 @@ model PaymentTransaction {
   metadata                Json?    @default("{}")
   createdAt               DateTime @default(now()) @map("created_at")
 
-  payment             Payment?             @relation(fields: [paymentId], references: [id], onDelete: Restrict)
-  duesPayment         DuesPayment?         @relation(fields: [duesPaymentId], references: [id], onDelete: Restrict)
-  electionApplication ElectionApplication? @relation(fields: [electionApplicationId], references: [id], onDelete: Restrict)
+  payment             Payment?             @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  duesPayment         DuesPayment?         @relation(fields: [duesPaymentId], references: [id], onDelete: Cascade)
+  electionApplication ElectionApplication? @relation(fields: [electionApplicationId], references: [id], onDelete: Cascade)
 
   @@index([paymentId], map: "idx_payment_transactions_payment_id")
   @@index([duesPaymentId], map: "idx_payment_transactions_dues_payment_id")
@@ -304,7 +304,7 @@ model ExcoOfficer {
   createdAt  DateTime  @default(now()) @map("created_at")
 
   position ElectionPosition @relation(fields: [positionId], references: [id], onDelete: Restrict)
-  member   Member           @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  member   Member           @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   @@index([isCurrent], map: "idx_exco_officers_is_current")
   @@index([positionId], map: "idx_exco_officers_position_id")
