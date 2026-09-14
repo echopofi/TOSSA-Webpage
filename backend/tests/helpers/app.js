@@ -1,3 +1,7 @@
+// TEST_DATABASE_URL gate — must run before @prisma/client or src/config are loaded,
+// so process.env.DATABASE_URL points at the disposable test DB, never production.
+require('./test-db');
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');

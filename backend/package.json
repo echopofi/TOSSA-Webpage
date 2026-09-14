@@ -16,7 +16,8 @@
     "db:reset": "node scripts/reset-db.js",
     "db:testemail": "node scripts/test-email.js",
     "test": "jest --runInBand --forceExit",
-    "test:verbose": "jest --runInBand --forceExit --verbose"
+    "test:verbose": "jest --runInBand --forceExit --verbose",
+    "test:db": "jest tests/auth.test.js tests/admin.test.js tests/payments.test.js --runInBand --forceExit"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
