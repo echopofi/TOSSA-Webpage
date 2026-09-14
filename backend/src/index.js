@@ -55,6 +55,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Deployed commit (no auth — public SHA only)
+app.get('/api/version', (req, res) => {
+  res.json(require('./version'));
+});
+
 // 404
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found' });
