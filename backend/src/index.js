@@ -2,10 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
-const { PrismaClient } = require('@prisma/client');
 const config = require('./config');
-
-const prisma = new PrismaClient();
+const prisma = require('./config/prisma');
 
 const authRoutes = require('./routes/auth');
 const memberRoutes = require('./routes/members');
@@ -84,9 +82,31 @@ async function start() {
       );
     }
 
-    app.listen(config.port, () => {
+    const server = app.listen(config.port, () => {
       console.log(`Server running on port ${config.port} [${config.nodeEnv}]`);
     });
+
+    // Release DB connections promptly on redeploys/restarts. Without this the
+    // pooler keeps our sessions open until its own idle timeout, and repeated
+    // deployments accumulate them until the provider's session cap is hit.
+    const shutdown = async (signal) => {
+      console.log(`[shutdown] ${signal} received — closing connections`);
+      try {
+        await new Promise((resolve) => server.close(resolve));
+        server.closeAllConnections?.();
+      } catch (err) {
+        console.error('[shutdown] error closing HTTP server:', err);
+      }
+      try {
+        await prisma.$disconnect();
+        console.log('[shutdown] Prisma disconnected');
+      } catch (err) {
+        console.error('[shutdown] error disconnecting Prisma:', err);
+      }
+      process.exit(0);
+    };
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
   } catch (err) {
     console.error('Failed to start server:', err);
     process.exit(1);
