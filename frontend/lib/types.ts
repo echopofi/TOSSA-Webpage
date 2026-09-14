@@ -139,7 +139,7 @@ export interface Payment {
   payment_type: "registration_fee" | "other";
   amount: number;
   paystack_reference: string;
-  status: "success" | "failed" | "pending";
+  status: "success" | "failed" | "pending" | "abandoned";
   paid_at?: string;
   created_at: string;
 }
@@ -148,6 +148,13 @@ export interface Payment {
 export interface PaystackInitResponse {
   authorization_url: string;
   reference: string;
+}
+
+/** GET /api/payments/verify/:reference response (Paystack verify shape) */
+export interface VerifyPaymentResult {
+  reference: string;
+  status: "success" | "abandoned" | "failed";
+  amount: number; // kobo, as Paystack reports it
 }
 
 // ─── Dues (recurring) ─────────────────────────────────────────────────────────

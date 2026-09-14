@@ -13,6 +13,7 @@ export interface SessionUser {
   full_name: string;
   email: string;
   role?: "member" | "admin";
+  is_verified?: boolean;
   setId?: string;
   set_name?: string;
   gender?: string;

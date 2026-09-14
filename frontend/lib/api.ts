@@ -36,6 +36,7 @@ import type {
   SetImage,
   Payment,
   PaystackInitResponse,
+  VerifyPaymentResult,
   DuesCycle,
   DuesPayment,
   DuesSummary,
@@ -257,7 +258,7 @@ export async function apiLogin(
     }
 
     const json = (await res.json()) as
-      | { user?: { id: string; email: string; fullName: string; role?: string }; accessToken?: string }
+      | { user?: { id: string; email: string; fullName: string; role?: string; isVerified?: boolean }; accessToken?: string }
       | undefined;
     const u = json?.user;
     if (!u) {
@@ -269,7 +270,7 @@ export async function apiLogin(
         full_name: u.fullName,
         email: u.email,
         role: u.role === "admin" ? "admin" : "member",
-        is_verified: true,
+        is_verified: !!u.isVerified,
       },
       access_token: json?.accessToken ?? "",
     });
@@ -347,7 +348,7 @@ export async function apiRegister(
   }
 
   const json = (await res.json()) as
-    | { user?: { id: string; email: string; fullName: string; role?: string; isVerified?: boolean } }
+    | { user?: { id: string; email: string; fullName: string; role?: string; isVerified?: boolean }; accessToken?: string }
     | undefined;
   const u = json?.user;
   if (!u) {
@@ -361,7 +362,7 @@ export async function apiRegister(
       role: u.role === "admin" ? "admin" : "member",
       is_verified: !!u.isVerified,
     },
-    access_token: "",
+    access_token: json?.accessToken ?? "",
   });
 }
 
@@ -1006,40 +1007,106 @@ export async function apiDeleteMilestone(
  * On return, show "processing" state and wait for webhook to confirm.
  */
 export async function apiInitiateRegistration(
-  callbackUrl: string
+  _callbackUrl?: string
 ): Promise<ApiSuccess<PaystackInitResponse>> {
-  await delay(800);
-  return ok({
-    authorization_url: "https://checkout.paystack.com/mock_reg_checkout",
-    reference: `REG_MOCK_${Date.now()}`,
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl || !getAccessToken()) {
+    throw new ApiRequestError(
+      0,
+      "Payment requires a sign-in session. Please sign in again."
+    );
+  }
+
+  const res = await authedFetch("/api/payments/initiate-registration", {
+    method: "POST",
   });
+  const json = (await res.json()) as
+    | { authorizationUrl?: string; reference?: string }
+    | undefined;
+
+  if (!json?.reference) {
+    throw new ApiRequestError(0, "Unexpected server response. Please try again.");
+  }
+  if (!json.authorizationUrl) {
+    // A pending payment already exists for this member — surface so the UI can
+    // point the user to the pending-reference flow instead of failing silently.
+    throw new ApiRequestError(
+      409,
+      "A payment for your registration has already been started. Check your payment status."
+    );
+  }
+  return ok({ authorization_url: json.authorizationUrl, reference: json.reference });
 }
 
 /**
  * GET /api/payments/verify/:reference
  * Called after payment redirect to check status before webhook arrives.
- * Shows "processing" if still pending — do NOT poll; rely on webhook.
+ * Note: lists path /api/payments/verify/:reference returns
+ * { reference, status, amount-kobo } — maps to VerifyPaymentResult.
  */
 export async function apiVerifyRegistration(
   reference: string
-): Promise<ApiSuccess<Payment>> {
-  await delay(600);
-  return ok({
-    id:                  "pay_001",
-    member_id:           "mem_001",
-    payment_type:        "registration_fee",
-    amount:              1000, // confirmed one-time fee ₦1,000
-    paystack_reference:  reference,
-    status:              "success",
-    paid_at:             new Date().toISOString(),
-    created_at:          new Date().toISOString(),
-  });
+): Promise<ApiSuccess<VerifyPaymentResult>> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl || !getAccessToken()) {
+    throw new ApiRequestError(
+      0,
+      "Payment verification requires a sign-in session. Please sign in again."
+    );
+  }
+
+  const res = await authedFetch(`/api/payments/verify/${encodeURIComponent(reference)}`);
+  const json = (await res.json()) as
+    | { reference?: string; status?: string; amount?: number }
+    | undefined;
+  if (!json?.reference || typeof json.status !== "string") {
+    throw new ApiRequestError(0, "Unexpected server response. Please try again.");
+  }
+  const status =
+    json.status === "success" || json.status === "failed" || json.status === "abandoned"
+      ? json.status
+      : "failed";
+  return ok({ reference: json.reference, status, amount: json.amount ?? 0 });
 }
 
 /** GET /api/payments/history — member's registration payment history */
 export async function apiGetPaymentHistory(): Promise<ApiSuccess<Payment[]>> {
-  await delay();
-  return ok(MOCK_PAYMENTS);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl || !getAccessToken()) {
+    return ok(MOCK_PAYMENTS);
+  }
+
+  const res = await authedFetch("/api/payments/history");
+  const json = (await res.json()) as
+    | {
+        payments?: Array<{
+          id: string;
+          paymentType: string;
+          amount: number;
+          status: string;
+          paystackReference: string;
+          paidAt?: string | null;
+          createdAt: string;
+        }>;
+      }
+    | undefined;
+
+  const payments: Payment[] = (json?.payments ?? []).map((p) => ({
+    id: p.id,
+    member_id: "",
+    payment_type: p.paymentType === "other" ? "other" : "registration_fee",
+    amount: p.amount,
+    paystack_reference: p.paystackReference,
+    status: (p.status === "success" ||
+      p.status === "failed" ||
+      p.status === "pending" ||
+      p.status === "abandoned"
+      ? p.status
+      : "pending") as Payment["status"],
+    paid_at: p.paidAt ?? undefined,
+    created_at: p.createdAt,
+  }));
+  return ok(payments);
 }
 
 // ─── Dues (recurring) ─────────────────────────────────────────────────────────

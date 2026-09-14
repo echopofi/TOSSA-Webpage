@@ -146,9 +146,7 @@ function PaymentsContent() {
   async function handlePayRegistration() {
     setInitiatingReg(true);
     try {
-      const res = await apiInitiateRegistration(
-        `${window.location.origin}/payments?status=success&reference=`
-      );
+      const res = await apiInitiateRegistration();
       window.location.href = res.data.authorization_url;
     } finally {
       setInitiatingReg(false);
