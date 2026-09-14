@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { GraduationCap, User, Lock, Mail, Eye, EyeOff } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import { apiLogin, apiRegister, ApiRequestError, apiGetSets } from "@/lib/api";
+import { apiLogin, apiRegister, ApiRequestError, apiGetSets, apiInitiateRegistration } from "@/lib/api";
 import { saveCurrentUser, saveAccessToken } from "@/lib/session";
 import { MOCK_SETS } from "@/lib/mockData";
 import type { GraduationSet } from "@/lib/types";
@@ -76,17 +76,12 @@ function AuthCard() {
         full_name: res.data.user.full_name,
         email: res.data.user.email,
         role: res.data.user.role,
+        is_verified: res.data.user.is_verified,
       });
       saveAccessToken(res.data.access_token);
       const fallback = res.data.user.role === "admin" ? "/admin" : "/dashboard";
       router.push(fallback);
     } catch (err) {
-      if (err instanceof ApiRequestError && err.status === 403) {
-        setNotice(
-          "Your account has not been verified yet. An admin will verify your account before you can sign in."
-        );
-        return;
-      }
       setNotice(
         err instanceof ApiRequestError && err.status === 401
           ? NOTICES["invalid-login"]
@@ -121,12 +116,31 @@ function AuthCard() {
           "Graduating sets couldn't be loaded from the server. Please reload this page and try again."
         );
       }
-      await apiRegister({
+      const res = await apiRegister({
         full_name: data.full_name,
         email: data.email,
         password: data.password,
         setId,
       });
+
+      // Save session so the payment step is authenticated (cookie already set by register).
+      saveCurrentUser({
+        full_name: res.data.user.full_name,
+        email: res.data.user.email,
+        role: "member",
+        is_verified: false,
+      });
+      saveAccessToken(res.data.access_token);
+
+      // Auto-initialize Paystack and redirect immediately.
+      try {
+        const pay = await apiInitiateRegistration();
+        window.location.href = pay.data.authorization_url;
+        return;
+      } catch {
+        // Payment initiation failed — fall through to "received" landing so the
+        // user can sign in later and complete payment from the pending screen.
+      }
       setReceived(true);
     } catch (err) {
       setRegError(
@@ -151,10 +165,11 @@ function AuthCard() {
               <GraduationCap size={28} className="text-[var(--success)]" />
             </div>
             <h2 className="text-xl font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)]">
-              Registration submitted
+              Account created
             </h2>
             <p className="text-sm text-[var(--text-muted)]">
-              Your account is under review. You&apos;ll receive an email once it&apos;s verified, then you can sign in.
+              Your account is ready. We couldn&apos;t start the registration fee payment just now — sign
+              in to complete your registration and submit the one-time fee.
             </p>
             <button
               onClick={() => {
