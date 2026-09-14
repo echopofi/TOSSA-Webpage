@@ -15,6 +15,7 @@ import {
   Vote,
 } from "lucide-react";
 import {
+  apiMe,
   loadMember,
   apiGetDuesSummary,
   apiGetAnnouncements,
@@ -25,25 +26,44 @@ import { formatNaira, formatDate, initials } from "@/lib/utils";
 import MemberIdCard from "@/components/id/MemberIdCard";
 import BioDataBanner from "@/components/bio/BioDataBanner";
 import NationalExcoStrip from "@/components/exco/NationalExcoStrip";
+import PendingVerificationScreen from "@/components/pending/PendingVerificationScreen";
 
 export default function DashboardPage() {
   const [member, setMember]               = useState<Member | null>(null);
   const [dues, setDues]                   = useState<DuesSummary | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [applications, setApplications]   = useState<ElectionApplication[]>([]);
+  const [verified, setVerified]           = useState(true);
   const [loading, setLoading]             = useState(true);
 
   useEffect(() => {
     (async () => {
-      // Member comes from the live /api/auth/me (falls back to session only if
-      // the live call fails — never render a stale cached identity silently).
-      const [meRes, dRes, aRes, eRes] = await Promise.all([
-        loadMember(),
+      // is_verified (admin approval) is the sole gate for dashboard content.
+      // The authoritative source is /api/auth/me — never trust the local session.
+      let me: { user: { is_verified: boolean }; member: Member } | null = null;
+      try {
+        me = (await apiMe()).data;
+      } catch {
+        me = null;
+      }
+
+      if (me) {
+        setVerified(me.user.is_verified);
+        if (!me.user.is_verified) {
+          setLoading(false);
+          return;
+        }
+        setMember(me.member);
+      } else {
+        setMember(await loadMember());
+        setVerified(true);
+      }
+
+      const [dRes, aRes, eRes] = await Promise.all([
         apiGetDuesSummary(),
         apiGetAnnouncements(),
         apiMyElectionApplications(),
       ]);
-      setMember(meRes);
       setDues(dRes.data);
       setAnnouncements(aRes.data.slice(0, 3));
       setApplications(eRes.data);
@@ -57,6 +77,10 @@ export default function DashboardPage() {
         <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
       </div>
     );
+  }
+
+  if (!verified) {
+    return <PendingVerificationScreen />;
   }
 
   const outstandingCycle = dues?.cycles.find((c) => c.status !== "paid");
