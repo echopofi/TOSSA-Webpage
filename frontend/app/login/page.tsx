@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useForm } from "react-hook-form";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { GraduationCap, User, Lock, Mail, Eye, EyeOff } from "lucide-react";
+import { GraduationCap, User, Lock, Mail, Eye, EyeOff, CreditCard } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { apiLogin, apiRegister, ApiRequestError, apiGetSets, apiInitiateRegistration } from "@/lib/api";
@@ -42,6 +42,8 @@ function AuthCard() {
     paramNotice && NOTICES[paramNotice] ? NOTICES[paramNotice] : ""
   );
   const [regError, setRegError] = useState("");
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState("");
   const [sets, setSets] = useState<GraduationSet[]>([]);
   const [received, setReceived] = useState(false);
   const [showLoginPw, setShowLoginPw] = useState(false);
@@ -132,15 +134,7 @@ function AuthCard() {
       });
       saveAccessToken(res.data.access_token);
 
-      // Auto-initialize Paystack and redirect immediately.
-      try {
-        const pay = await apiInitiateRegistration();
-        window.location.assign(pay.data.authorization_url);
-        return;
-      } catch {
-        // Payment initiation failed — fall through to "received" landing so the
-        // user can sign in later and complete payment from the pending screen.
-      }
+      // Show the "Pay now / Pay later" choice — never auto-redirect to Paystack.
       setReceived(true);
     } catch (err) {
       setRegError(
@@ -152,6 +146,25 @@ function AuthCard() {
       );
     } finally {
       setLoading(null);
+    }
+  }
+
+  async function handlePayNow() {
+    setPaying(true);
+    setPayError("");
+    try {
+      const pay = await apiInitiateRegistration();
+      window.location.assign(pay.data.authorization_url);
+    } catch (err) {
+      setPayError(
+        err instanceof ApiRequestError
+          ? err.status === 409
+            ? "You already have a payment in progress. Finish it from your email receipt or try again in a few minutes."
+            : err.message
+          : "Unable to reach the server. Please try again."
+      );
+    } finally {
+      setPaying(false);
     }
   }
 
@@ -168,17 +181,43 @@ function AuthCard() {
               Account created
             </h2>
             <p className="text-sm text-[var(--text-muted)]">
-              Your account is ready. We couldn&apos;t start the registration fee payment just now — sign
-              in to complete your registration and submit the one-time fee.
+              Your account is ready. Complete your registration with the one-time fee so the
+              admin can approve your account.
             </p>
+            <div className="w-full text-left flex items-start gap-3 bg-[var(--success-bg)] border border-[var(--success)]/20 rounded-xl px-5 py-4 text-[#166534]">
+              <CreditCard size={20} className="shrink-0 mt-0.5" />
+              <p className="text-sm">
+                One-time registration fee outstanding. You can pay now or later — either way,
+                sign in anytime to complete it from your dashboard.
+              </p>
+            </div>
+            <button
+              onClick={handlePayNow}
+              disabled={paying}
+              className="btn-primary w-full justify-center"
+            >
+              {paying ? "Opening Paystack…" : "Pay now — complete registration"}
+            </button>
+            <button
+              onClick={() => router.push("/")}
+              className="btn-outline w-full justify-center"
+            >
+              Pay later
+            </button>
+            {payError && (
+              <p className="text-sm font-medium text-[var(--danger)] bg-[var(--danger-bg)] border border-[var(--danger)]/20 rounded-lg px-4 py-3 text-left">
+                {payError}
+              </p>
+            )}
             <button
               onClick={() => {
                 setReceived(false);
                 setActive(false);
                 setRegError("");
+                setPayError("");
                 registerForm.reset();
               }}
-              className="btn-outline w-full justify-center"
+              className="text-xs text-[var(--text-muted)] hover:text-[var(--primary)] underline"
             >
               Back to sign in
             </button>
