@@ -13,6 +13,7 @@ import {
   Calendar,
   User,
   Vote,
+  FileText,
 } from "lucide-react";
 import {
   apiMe,
@@ -332,6 +333,15 @@ export default function DashboardPage() {
                 <ArrowRight size={14} className="ml-auto text-[var(--text-muted)]" />
               </Link>
             ))}
+            <a
+              href="/assets/CONSTITUTION%20TSSOSA%20REAL%20COPY_103849%20(1).docx"
+              download
+              className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-[var(--bg-base)] text-sm font-medium text-[var(--text-body)] hover:text-[var(--primary)] transition-colors"
+            >
+              <FileText size={18} className="text-[var(--primary)]" />
+              Download Constitution
+              <ArrowRight size={14} className="ml-auto text-[var(--text-muted)]" />
+            </a>
           </div>
         </Card>
 
