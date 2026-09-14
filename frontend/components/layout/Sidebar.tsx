@@ -23,7 +23,12 @@ const navItems = [
   { href: "/payments",     icon: CreditCard,      label: "Dues & Payments" },
   { href: "/elections",    icon: Vote,            label: "Elections"   },
   { href: "/exco",         icon: Shield,          label: "National Exco"    },
-  { href: "/profile",      icon: User,            label: "My Profile"  },
+  {
+    href: "/profile",
+    icon: User,
+    label: "My Profile",
+    verifiedOnly: true, // only verified/paid members see their profile
+  },
   { href: "/admin",        icon: Megaphone,       label: "Admin Panel", admin: true },
   { href: "/admin/sets",   icon: Images,          label: "Set Media",   admin: true },
   { href: "/admin/settings", icon: Settings,      label: "Admin Settings", admin: true },
@@ -35,7 +40,10 @@ interface SidebarProps {
 
 export default function Sidebar({ isAdmin }: SidebarProps) {
   const pathname = usePathname();
-  const isAdminUser = isAdmin === true || getCurrentUser()?.role === "admin";
+  const currentUser = getCurrentUser();
+  const isAdminUser = isAdmin === true || currentUser?.role === "admin";
+  // Admins are always verified; members need is_verified to see verifiedOnly items.
+  const isVerifiedUser = isAdminUser || currentUser?.is_verified === true;
 
   return (
     <aside className="w-60 shrink-0 hidden md:flex flex-col bg-[var(--surface-card)] border-r border-[var(--border-subtle)] min-h-screen">
@@ -59,7 +67,11 @@ export default function Sidebar({ isAdmin }: SidebarProps) {
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 flex flex-col gap-1">
         {navItems
-          .filter((item) => !item.admin || isAdminUser)
+          .filter(
+            (item) =>
+              (item.admin ? isAdminUser : true) &&
+              (!item.verifiedOnly || isVerifiedUser)
+          )
           .map(({ href, icon: Icon, label }) => {
             const active = pathname === href || pathname.startsWith(href + "/");
             return (

@@ -44,9 +44,14 @@ describe('POST /api/payments/initiate-registration', () => {
     paystackModule.initializeTransaction = originalInit;
   });
 
-  it('returns existing pending reference if one exists', async () => {
+  it('returns existing pending reference if one exists and is live on Paystack', async () => {
+    await prisma.payment.deleteMany({
+      where: { memberId: data.memberProfile.id, paymentType: 'registration_fee' },
+    });
+
     const paystackModule = require('../src/services/paystack');
     const originalInit = paystackModule.initializeTransaction;
+    const originalVerify = paystackModule.verifyTransaction;
     paystackModule.initializeTransaction = jest.fn().mockResolvedValue({
       data: {
         authorization_url: 'https://checkout.paystack.com/test',
@@ -54,21 +59,86 @@ describe('POST /api/payments/initiate-registration', () => {
         reference: 'REG-DUP123',
       },
     });
+    // Paystack still holds a transaction for the earlier attempt, so the guard
+    // must return that same reference instead of spawning a fresh one.
+    paystackModule.verifyTransaction = jest.fn().mockResolvedValue({
+      data: { status: 'initiated', amount: config.registrationFeeAmount * 100 },
+    });
 
     const token = generateAccessToken(data.memberUser);
 
-    await request(app)
+    const first = await request(app)
       .post('/api/payments/initiate-registration')
       .set('Authorization', `Bearer ${token}`);
+    expect(first.body.reference).toBe('REG-DUP123');
+
+    const freshPending = await prisma.payment.findFirst({
+      where: { memberId: data.memberProfile.id, paymentType: 'registration_fee', status: 'pending' },
+    });
+    expect(freshPending.paystackReference).toBe('REG-DUP123');
 
     const res = await request(app)
       .post('/api/payments/initiate-registration')
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.reference).toBeDefined();
+    expect(res.body.reference).toBe('REG-DUP123');
+
+    // No extra row was created for the "in progress" call.
+    const pendings = await prisma.payment.findMany({
+      where: { memberId: data.memberProfile.id, paymentType: 'registration_fee', status: 'pending' },
+    });
+    expect(pendings).toHaveLength(1);
 
     paystackModule.initializeTransaction = originalInit;
+    paystackModule.verifyTransaction = originalVerify;
+  });
+
+  it('self-heals a FRESH pending orphan (unknown to Paystack) instead of blocking', async () => {
+    await prisma.payment.deleteMany({
+      where: { memberId: data.memberProfile.id, paymentType: 'registration_fee' },
+    });
+
+    const orphan = await prisma.payment.create({
+      data: {
+        memberId: data.memberProfile.id,
+        paymentType: 'registration_fee',
+        amount: config.registrationFeeAmount * 100,
+        paystackReference: 'REG-ORPHAN01',
+        status: 'pending',
+        createdAt: new Date(), // fresh — the exact scenario the user hit
+      },
+    });
+
+    const paystackModule = require('../src/services/paystack');
+    const originalInit = paystackModule.initializeTransaction;
+    const originalVerify = paystackModule.verifyTransaction;
+    // Paystack has no record of the orphaned reference.
+    paystackModule.verifyTransaction = jest
+      .fn()
+      .mockRejectedValue(new Error('Transaction reference not found'));
+    paystackModule.initializeTransaction = jest.fn().mockResolvedValue({
+      data: {
+        authorization_url: 'https://checkout.paystack.com/fresh',
+        access_code: 'fresh_code',
+        reference: 'REG-FRESH02',
+      },
+    });
+
+    const token = generateAccessToken(data.memberUser);
+    const res = await request(app)
+      .post('/api/payments/initiate-registration')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.reference).toBe('REG-FRESH02');
+
+    // The orphan was retired, not left blocking.
+    const retired = await prisma.payment.findUnique({ where: { id: orphan.id } });
+    expect(retired.status).toBe('failed');
+
+    paystackModule.initializeTransaction = originalInit;
+    paystackModule.verifyTransaction = originalVerify;
   });
 
   it('rolls back the pending row when Paystack initialize fails (no stuck payments)', async () => {
@@ -114,6 +184,7 @@ describe('POST /api/payments/initiate-registration', () => {
 
     const paystackModule = require('../src/services/paystack');
     const originalInit = paystackModule.initializeTransaction;
+    const originalVerify = paystackModule.verifyTransaction;
     paystackModule.initializeTransaction = jest.fn().mockResolvedValue({
       data: {
         authorization_url: 'https://checkout.paystack.com/fresh',
@@ -121,6 +192,10 @@ describe('POST /api/payments/initiate-registration', () => {
         reference: 'REG-FRESH01',
       },
     });
+    // Stale reference is unknown to Paystack → treated as orphan.
+    paystackModule.verifyTransaction = jest
+      .fn()
+      .mockRejectedValue(new Error('Transaction reference not found'));
 
     const token = generateAccessToken(data.memberUser);
     const res = await request(app)
@@ -134,6 +209,7 @@ describe('POST /api/payments/initiate-registration', () => {
     expect(retired.status).toBe('failed');
 
     paystackModule.initializeTransaction = originalInit;
+    paystackModule.verifyTransaction = originalVerify;
   });
 });
 

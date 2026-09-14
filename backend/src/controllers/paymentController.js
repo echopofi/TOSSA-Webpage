@@ -4,6 +4,20 @@ const config = require('../config');
 const paystack = require('../services/paystack');
 const { sendPaymentConfirmation } = require('../services/email');
 
+// Returns true when Paystack still holds a transaction for this reference (an
+// initialize that actually reached Paystack). false when it has no record — an
+// orphan left by a failed/errored initialize, a crash, or pre-fix code — or
+// when Paystack is momentarily unreachable (treated as not-live so the guard
+// never blocks a retry on a best-effort liveness check).
+async function referenceKnownToPaystack(reference) {
+  try {
+    const res = await paystack.verifyTransaction(reference);
+    return Boolean(res && res.data && res.data.status);
+  } catch (err) {
+    return false;
+  }
+}
+
 // POST /api/payments/initiate-registration
 async function initiateRegistration(req, res) {
   try {
@@ -22,11 +36,13 @@ async function initiateRegistration(req, res) {
       return res.status(400).json({ error: 'Registration fee already paid' });
     }
 
-    // Pending-payment guard. A FRESH pending means the Paystack checkout was
-    // actually spawned — surface its reference so the user can resume/finish
-    // rather than silently re-initialising (Paystack rejects reusing a live
-    // reference). A STALE pending is retired instead of blocking, so a broken
-    // or abandoned attempt can never permanently lock the user out of retrying.
+    // Pending-payment guard. Only a pending row that Paystack still recognises
+    // AND is fresh is treated as "in progress" (the user may still have that
+    // checkout open). Anything stale OR unknown to Paystack is an orphan —
+    // a failed/errored initialize, a crash after row creation, or a pre-fix
+    // leftover — so it is retired and we fall through to a fresh attempt.
+    // This makes the guard self-healing: a broken pending can never permanently
+    // lock a member out of retrying.
     const staleMs = config.registrationPaymentPendingTtlMinutes * 60 * 1000;
     const pending = await prisma.payment.findFirst({
       where: { memberId: member.id, paymentType: 'registration_fee', status: 'pending' },
@@ -34,16 +50,18 @@ async function initiateRegistration(req, res) {
     });
     if (pending) {
       const ageMs = Date.now() - pending.createdAt.getTime();
-      if (ageMs < staleMs) {
+      const knownOnPaystack = await referenceKnownToPaystack(pending.paystackReference);
+      const isStale = ageMs >= staleMs;
+      if (knownOnPaystack && !isStale) {
         console.log(
           `[payments] pending registration payment ${pending.id} (ref ${pending.paystackReference})` +
-            ` is ${Math.round(ageMs / 1000)}s old — returning reference, not re-initialising`
+            ` is ${Math.round(ageMs / 1000)}s old and live on Paystack — returning reference`,
         );
         return res.json({ reference: pending.paystackReference });
       }
       console.warn(
-        `[payments] retiring stale pending registration payment ${pending.id}` +
-          ` (ref ${pending.paystackReference}, age ${Math.round(ageMs / 60000)}m)`
+        `[payments] retiring pending registration payment ${pending.id}` +
+          ` (ref ${pending.paystackReference}, age ${Math.round(ageMs / 60000)}m, knownOnPaystack=${knownOnPaystack})`,
       );
       await prisma.payment.update({ where: { id: pending.id }, data: { status: 'failed' } });
     }
@@ -61,70 +79,88 @@ async function initiateRegistration(req, res) {
       },
     });
     console.log(
-      `[payments] created pending registration payment ${payment.id} (ref ${reference}, amount ${amount})`
+      `[payments] created pending registration payment ${payment.id} (ref ${reference}, amount ${amount})`,
     );
 
-    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
-
-    let paystackResponse;
+    // ONE try/catch covers everything after row creation, so no code path can
+    // leave the row orphaned: on ANY failure the created row is rolled back
+    // (or, if the delete itself fails, marked failed and logged loudly — never
+    // silently swallowed) and a precise error is returned.
     try {
-      paystackResponse = await paystack.initializeTransaction({
+      const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+
+      const paystackResponse = await paystack.initializeTransaction({
         email: user.email,
         amount,
         reference,
         metadata: { member_id: member.id, payment_id: payment.id, type: 'registration' },
         callback_url: `${config.frontendUrl}/verify-payment?reference=${reference}`,
       });
-    } catch (paystackErr) {
-      const errorInfo = `${paystackErr.message || 'unknown error'}${
-        paystackErr.status ? ` (HTTP ${paystackErr.status})` : ''
-      }${paystackErr.code ? ` [${paystackErr.code}]` : ''}`;
-      // Paystack holds no usable record of a reference whose initialization
-      // itself failed, so discard the pending row — never leave a stale row
-      // that would block the user from retrying.
-      await prisma.payment.delete({ where: { id: payment.id } }).catch(() => {});
-      console.error(
-        `[payments] Paystack initialize failed for ${reference}; rolled back pending payment ${payment.id}: ${errorInfo}`
-      );
-      return res
-        .status(502)
-        .json({ error: 'Payment gateway is temporarily unavailable. Please try again in a moment.' });
-    }
 
-    // Validate the Paystack response shape — a malformed body is treated the same
-    // as a failed initialize (row rolled back) so we never hand a broken ref out.
-    if (
-      !paystackResponse ||
-      !paystackResponse.data ||
-      !paystackResponse.data.authorization_url ||
-      !paystackResponse.data.reference
-    ) {
-      await prisma.payment.delete({ where: { id: payment.id } }).catch(() => {});
-      console.error(
-        `[payments] Paystack returned a malformed response for ${reference}; rolled back pending payment ${payment.id}`
-      );
-      return res
-        .status(502)
-        .json({ error: 'Payment gateway returned an invalid response. Please try again in a moment.' });
-    }
+      // Validate the Paystack response shape — a malformed body is treated the
+      // same as a failed initialize (row rolled back) so we never hand a
+      // broken reference out.
+      if (
+        !paystackResponse ||
+        !paystackResponse.data ||
+        !paystackResponse.data.authorization_url ||
+        !paystackResponse.data.reference
+      ) {
+        const err = new Error('Paystack returned a malformed response');
+        err.code = 'PAYSTACK_INVALID_RESPONSE';
+        throw err;
+      }
 
-    // Update paystack reference if Paystack returned a different one
-    if (paystackResponse.data.reference !== reference) {
-      await prisma.payment.update({
-        where: { id: payment.id },
-        data: { paystackReference: paystackResponse.data.reference },
+      // Update paystack reference if Paystack returned a different one
+      if (paystackResponse.data.reference !== reference) {
+        await prisma.payment.update({
+          where: { id: payment.id },
+          data: { paystackReference: paystackResponse.data.reference },
+        });
+      }
+
+      console.log(
+        `[payments] Paystack initialized for ${paystackResponse.data.reference} (payment ${payment.id})`,
+      );
+      res.json({
+        authorizationUrl: paystackResponse.data.authorization_url,
+        accessCode: paystackResponse.data.access_code,
+        reference: paystackResponse.data.reference,
       });
-    }
+    } catch (rollbackErr) {
+      try {
+        await prisma.payment.delete({ where: { id: payment.id } });
+      } catch (deleteErr) {
+        await prisma.payment
+          .update({ where: { id: payment.id }, data: { status: 'failed' } })
+          .catch(() => {});
+        console.error(
+          `[payments] rollback delete failed for ${payment.id}; marked as failed instead`,
+          deleteErr,
+        );
+      }
 
-    console.log(
-      `[payments] Paystack initialized for ${paystackResponse.data.reference} (payment ${payment.id})`
-    );
-    res.json({
-      authorizationUrl: paystackResponse.data.authorization_url,
-      accessCode: paystackResponse.data.access_code,
-      reference: paystackResponse.data.reference,
-    });
+      const isGateway =
+        typeof rollbackErr.code === 'string' && rollbackErr.code.startsWith('PAYSTACK_');
+      const errorInfo = `${rollbackErr.message || 'unknown error'}${
+        rollbackErr.status ? ` (HTTP ${rollbackErr.status})` : ''
+      }${rollbackErr.code ? ` [${rollbackErr.code}]` : ''}`;
+      console.error(
+        isGateway
+          ? `[payments] Paystack failed for ${reference}; rolled back pending payment ${payment.id}: ${errorInfo}`
+          : `[payments] initiate-registration failed for ${reference}; rolled back pending payment ${payment.id}: ${errorInfo}`,
+      );
+      return res
+        .status(isGateway ? 502 : 500)
+        .json({
+          error: isGateway
+            ? 'Payment gateway is temporarily unavailable. Please try again in a moment.'
+            : 'Internal server error',
+        });
+    }
   } catch (err) {
+    // Errors BEFORE the payment row is created (lookups, guards) — nothing to
+    // roll back, but logged at full detail so the failing step is identifiable.
     console.error('Initiate registration payment error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
