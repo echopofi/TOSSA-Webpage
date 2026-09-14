@@ -70,6 +70,15 @@ async function start() {
   try {
     await prisma.$connect();
     console.log('Database connected');
+
+    const requiredSecrets = ['PAYSTACK_SECRET_KEY'];
+    const missing = requiredSecrets.filter((name) => !process.env[name]);
+    if (missing.length > 0) {
+      console.warn(
+        `[startup] Missing env vars: ${missing.join(', ')} — Paystack payment initialization will fail (502) until they are set`
+      );
+    }
+
     app.listen(config.port, () => {
       console.log(`Server running on port ${config.port} [${config.nodeEnv}]`);
     });

@@ -70,6 +70,71 @@ describe('POST /api/payments/initiate-registration', () => {
 
     paystackModule.initializeTransaction = originalInit;
   });
+
+  it('rolls back the pending row when Paystack initialize fails (no stuck payments)', async () => {
+    await prisma.payment.deleteMany({
+      where: { memberId: data.memberProfile.id, paymentType: 'registration_fee' },
+    });
+
+    const paystackModule = require('../src/services/paystack');
+    const originalInit = paystackModule.initializeTransaction;
+    paystackModule.initializeTransaction = jest.fn().mockRejectedValue(new Error('Paystack is down'));
+
+    const token = generateAccessToken(data.memberUser);
+    const res = await request(app)
+      .post('/api/payments/initiate-registration')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(502);
+
+    // No orphaned pending row may survive a failed initialize.
+    const leftovers = await prisma.payment.findMany({
+      where: { memberId: data.memberProfile.id, paymentType: 'registration_fee', status: 'pending' },
+    });
+    expect(leftovers).toHaveLength(0);
+
+    paystackModule.initializeTransaction = originalInit;
+  });
+
+  it('retires a stale pending payment (> TTL) so the member can retry with a fresh reference', async () => {
+    await prisma.payment.deleteMany({
+      where: { memberId: data.memberProfile.id, paymentType: 'registration_fee' },
+    });
+
+    const stale = await prisma.payment.create({
+      data: {
+        memberId: data.memberProfile.id,
+        paymentType: 'registration_fee',
+        amount: config.registrationFeeAmount * 100,
+        paystackReference: 'REG-STALE01',
+        status: 'pending',
+        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2h old > 30m TTL
+      },
+    });
+
+    const paystackModule = require('../src/services/paystack');
+    const originalInit = paystackModule.initializeTransaction;
+    paystackModule.initializeTransaction = jest.fn().mockResolvedValue({
+      data: {
+        authorization_url: 'https://checkout.paystack.com/fresh',
+        access_code: 'fresh_code',
+        reference: 'REG-FRESH01',
+      },
+    });
+
+    const token = generateAccessToken(data.memberUser);
+    const res = await request(app)
+      .post('/api/payments/initiate-registration')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.reference).toBe('REG-FRESH01');
+
+    const retired = await prisma.payment.findUnique({ where: { id: stale.id } });
+    expect(retired.status).toBe('failed');
+
+    paystackModule.initializeTransaction = originalInit;
+  });
 });
 
 describe('GET /api/payments/verify/:reference', () => {

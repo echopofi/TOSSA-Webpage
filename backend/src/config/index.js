@@ -25,6 +25,10 @@ module.exports = {
   //   annual dues ₦2,000/yr and web-fee ₦1,000/yr are stored per-cycle on
   //   dues_cycles (fee_type 'dues' | 'web'); amounts are always read from the DB.
   registrationFeeAmount: parseInt(process.env.REGISTRATION_FEE_AMOUNT, 10) || 1000,
+  // A pending registration payment older than this (minutes) is treated as
+  // abandoned/broken and retired so the member can retry instead of being stuck.
+  registrationPaymentPendingTtlMinutes:
+    parseInt(process.env.REGISTRATION_PAYMENT_PENDING_TTL_MINUTES, 10) || 30,
   email: {
     // Resend API takes precedence when RESEND_API_KEY is set; SMTP (nodemailer)
     // remains as a fallback for self-hosted setups.
