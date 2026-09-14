@@ -35,7 +35,9 @@ afterAll(async () => {
 });
 
 // Builds a pending applicant the same way POST /api/auth/register would
-// (unverified user + member + a set membership).
+// (unverified user + member + a set membership). By default also records a
+// confirmed registration-fee payment, mirroring the post-Paystack state —
+// pass `paid: false` to simulate a registrant who is still owed.
 async function createPendingApplicant(email, overrides = {}) {
   const bcrypt = require('bcryptjs');
   const user = await prisma.user.create({
@@ -54,13 +56,30 @@ async function createPendingApplicant(email, overrides = {}) {
       data: { memberId: member.id, setId: overrides.setId || data.set2021.id },
     });
   }
+  if (overrides.paid !== false) {
+    await prisma.payment.create({
+      data: {
+        memberId: member.id,
+        paymentType: 'registration_fee',
+        amount: 1000 * 100,
+        paystackReference: `REG-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        status: 'success',
+        paidAt: new Date(),
+      },
+    });
+  }
   return { user, member };
 }
 
 async function removeApplicant(userId) {
-  const m = await prisma.member.findUnique({ where: { userId } });
+  const m = await prisma.member.findUnique({ where: { userId }, include: { payments: true } });
   if (m) {
+    const paymentIds = m.payments.map((p) => p.id);
     await prisma.setMember.deleteMany({ where: { memberId: m.id } });
+    if (paymentIds.length > 0) {
+      await prisma.paymentTransaction.deleteMany({ where: { paymentId: { in: paymentIds } } });
+      await prisma.payment.deleteMany({ where: { id: { in: paymentIds } } });
+    }
     await prisma.member.delete({ where: { id: m.id } });
   }
   await prisma.refreshToken.deleteMany({ where: { userId } });
@@ -183,10 +202,14 @@ describe('PUT /api/admin/members/:id/role', () => {
 });
 
 describe('GET /api/admin/members/pending', () => {
-  it('returns only unverified registrants (with set, photo, date)', async () => {
-    const applicant = await createPendingApplicant('pending@test.com', {
+  it('returns only unverified registrants whose registration fee is paid (with set, photo, date)', async () => {
+    const paidApplicant = await createPendingApplicant('pending@test.com', {
       fullName: 'Awaiting Review',
       profileImage: 'https://example.com/p.jpg',
+    });
+    const unpaidApplicant = await createPendingApplicant('unpaid@test.com', {
+      fullName: 'Has Not Paid',
+      paid: false,
     });
 
     const token = generateAccessToken(data.admin);
@@ -203,11 +226,15 @@ describe('GET /api/admin/members/pending', () => {
     expect(row.set).toContain('2021');
     expect(typeof row.registeredAt).toBe('string');
 
+    // An unverified registrant who hasn't paid must NEVER appear.
+    expect(res.body.members.find((m) => m.email === 'unpaid@test.com')).toBeUndefined();
+
     // Verified members must NOT appear.
     const verified = res.body.members.find((m) => m.email === 'member@test.com');
     expect(verified).toBeUndefined();
 
-    await removeApplicant(applicant.user.id);
+    await removeApplicant(paidApplicant.user.id);
+    await removeApplicant(unpaidApplicant.user.id);
   });
 
   it('rejects non-admin (403) and unauthenticated (401)', async () => {

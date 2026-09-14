@@ -50,6 +50,7 @@ async function initiateRegistration(req, res) {
       amount,
       reference,
       metadata: { member_id: member.id, payment_id: payment.id, type: 'registration' },
+      callback_url: `${config.frontendUrl}/verify-payment?reference=${reference}`,
     });
 
     // Update paystack reference if Paystack returned a different one
@@ -105,17 +106,20 @@ async function verifyPayment(req, res) {
       },
     });
 
-    // Create ledger entry
-    await prisma.paymentTransaction.create({
-      data: {
-        paymentId: payment.id,
-        amount: tx.amount,
-        status: newStatus,
-        channel: 'paystack',
-        reference,
-        metadata: tx,
-      },
-    });
+    // Create ledger entry (idempotent — never duplicate a paystack reference)
+    const existingLedger = await prisma.paymentTransaction.findUnique({ where: { reference } });
+    if (!existingLedger) {
+      await prisma.paymentTransaction.create({
+        data: {
+          paymentId: payment.id,
+          amount: tx.amount,
+          status: newStatus,
+          channel: 'paystack',
+          reference,
+          metadata: tx,
+        },
+      });
+    }
 
     if (newStatus === 'success') {
       const user = await prisma.user.findUnique({

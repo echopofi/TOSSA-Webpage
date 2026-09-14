@@ -177,7 +177,7 @@ describe('POST /api/auth/login', () => {
     expect(res.body.error).toContain('Invalid email');
   });
 
-  it('rejects unverified user', async () => {
+  it('logs in an unverified user with isVerified false (banner flow)', async () => {
     // Create unverified user
     const bcrypt = require('bcryptjs');
     const unverified = await prisma.user.create({
@@ -193,7 +193,9 @@ describe('POST /api/auth/login', () => {
       .post('/api/auth/login')
       .send({ email: 'unverified@test.com', password: 'pass12345' });
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
+    expect(res.body.user.isVerified).toBe(false);
+    expect(res.body.accessToken).toBeDefined();
 
     await prisma.user.delete({ where: { id: unverified.id } });
   });

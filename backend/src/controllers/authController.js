@@ -164,6 +164,7 @@ async function register(req, res) {
         email: user.email,
         fullName: user.fullName,
         role: user.role,
+        isVerified: user.isVerified,
       },
       member: {
         id: member.id,
@@ -195,10 +196,6 @@ async function login(req, res) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    if (!user.isVerified) {
-      return res.status(403).json({ error: 'Account is not verified' });
-    }
-
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -226,6 +223,7 @@ async function login(req, res) {
         email: user.email,
         fullName: user.fullName,
         role: user.role,
+        isVerified: user.isVerified,
       },
       accessToken,
     });

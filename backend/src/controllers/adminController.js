@@ -206,12 +206,20 @@ async function updateMemberRole(req, res) {
 }
 
 // GET /api/admin/members/pending
-// Lists every registrant whose account is not yet verified. Rejected applicants
-// are deleted outright, so this is the only "review" state an admin sees.
+// Lists every registrant whose account is not yet verified AND whose one-time
+// registration fee has been confirmed paid. Unpaid registrants never appear
+// here — they stay on their own "payment outstanding" screen until they pay.
+// Rejected applicants are deleted outright, so this is the only "review"
+// state an admin sees.
 async function pendingMembers(req, res) {
   try {
     const members = await prisma.member.findMany({
-      where: { user: { isVerified: false } },
+      where: {
+        user: { isVerified: false },
+        payments: {
+          some: { paymentType: 'registration_fee', status: 'success' },
+        },
+      },
       include: {
         user: { select: { id: true, fullName: true, email: true, createdAt: true } },
         setMembers: { include: { set: { select: { setName: true } } } },
