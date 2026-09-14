@@ -20,8 +20,8 @@ import clsx from "clsx";
 const navItems = [
   { href: "/dashboard",    icon: LayoutDashboard, label: "Dashboard"   },
   { href: "/sets",         icon: Users,           label: "My Set"      },
-  { href: "/payments",     icon: CreditCard,      label: "Dues & Payments" },
-  { href: "/elections",    icon: Vote,            label: "Elections"   },
+  { href: "/payments",     icon: CreditCard,      label: "Dues & Payments", verifiedOnly: true },
+  { href: "/elections",    icon: Vote,            label: "Elections",  verifiedOnly: true },
   { href: "/exco",         icon: Shield,          label: "National Exco"    },
   {
     href: "/profile",
