@@ -13,15 +13,13 @@ type State = "verifying" | "success" | "not_paid" | "error";
 function VerifyPaymentContent() {
   const params = useSearchParams();
   const reference = params.get("reference");
-  const [state, setState] = useState<State>("verifying");
-  const [detail, setDetail] = useState("");
+  const [state, setState] = useState<State>(reference ? "verifying" : "error");
+  const [detail, setDetail] = useState(
+    reference ? "" : "No payment reference was provided."
+  );
 
   useEffect(() => {
-    if (!reference) {
-      setState("error");
-      setDetail("No payment reference was provided.");
-      return;
-    }
+    if (!reference) return;
 
     let active = true;
     (async () => {

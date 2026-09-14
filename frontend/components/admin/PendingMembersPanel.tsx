@@ -170,7 +170,7 @@ export default function PendingMembersPanel() {
       </Card>
 
       <p className="text-xs text-[var(--text-muted)]">
-        Approving emails the applicant ("You've been verified — you can now log in.") and lets them
+        Approving emails the applicant (&quot;You&apos;ve been verified — you can now log in.&quot;) and lets them
         sign in. Rejecting sends them a notice, then <strong>permanently deletes</strong> their
         registration.
       </p>
@@ -194,7 +194,7 @@ export default function PendingMembersPanel() {
                   Reject this registration?
                 </h3>
                 <p className="text-sm text-[var(--text-body)] mt-1">
-                  You're about to reject <strong>{rejectTarget.full_name}</strong>{" "}
+                  You&apos;re about to reject <strong>{rejectTarget.full_name}</strong>{" "}
                   ({rejectTarget.email}). A rejection notice will be emailed to them first, then
                   their registration will be{" "}
                   <strong className="text-[var(--danger)]">permanently deleted</strong>.

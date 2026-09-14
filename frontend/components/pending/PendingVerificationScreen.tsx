@@ -36,7 +36,7 @@ export default function PendingVerificationScreen() {
     setPayError("");
     try {
       const res = await apiInitiateRegistration();
-      window.location.href = res.data.authorization_url;
+      window.location.assign(res.data.authorization_url);
     } catch (err) {
       setPayError(
         err instanceof ApiRequestError && err.status === 409

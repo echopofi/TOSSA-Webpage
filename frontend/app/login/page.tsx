@@ -135,7 +135,7 @@ function AuthCard() {
       // Auto-initialize Paystack and redirect immediately.
       try {
         const pay = await apiInitiateRegistration();
-        window.location.href = pay.data.authorization_url;
+        window.location.assign(pay.data.authorization_url);
         return;
       } catch {
         // Payment initiation failed — fall through to "received" landing so the

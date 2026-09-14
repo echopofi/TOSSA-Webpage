@@ -102,7 +102,7 @@ function ProcessingBanner({ reference, type }: { reference: string; type: "reg" 
       <div>
         <p className="font-semibold">Processing your payment…</p>
         <p className="text-sm opacity-75 mt-0.5">
-          We're waiting for confirmation from Paystack. This usually takes a few seconds. Do not refresh. Ref: {reference}
+          We&apos;re waiting for confirmation from Paystack. This usually takes a few seconds. Do not refresh. Ref: {reference}
         </p>
       </div>
     </div>
@@ -266,7 +266,7 @@ function PaymentsContent() {
             Pay Registration Fee <ExternalLink size={15} />
           </Button>
           <p className="text-xs text-[var(--text-muted)] mt-3">
-            You'll be redirected to Paystack. Return here after payment to see your status.
+            You&apos;ll be redirected to Paystack. Return here after payment to see your status.
           </p>
         </Card>
       )}
@@ -317,7 +317,7 @@ function PaymentsContent() {
             ))}
           </div>
           <p className="text-xs text-[var(--text-muted)] mt-4">
-            Payment amounts are set by the association and verified server-side. You'll be redirected to Paystack to complete payment securely.
+            Payment amounts are set by the association and verified server-side. You&apos;ll be redirected to Paystack to complete payment securely.
           </p>
         </Card>
       ) : regPaid && (
@@ -328,7 +328,7 @@ function PaymentsContent() {
               All dues are paid!
             </p>
             <p className="text-sm text-[#166534]/70 mt-0.5">
-              You're fully up to date. Thank you for supporting the association.
+              You&apos;re fully up to date. Thank you for supporting the association.
             </p>
           </div>
         </Card>
