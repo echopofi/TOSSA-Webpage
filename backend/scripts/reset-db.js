@@ -74,7 +74,6 @@ async function resetDb() {
 
   console.log('Seeded admin:');
   console.log(`  email:    ${ADMIN_EMAIL}`);
-  console.log(`  password: ${ADMIN_PASSWORD}`);
   console.log(`  name:     ${ADMIN_NAME}`);
   console.log(`  role:     admin (verified)`);
   console.log(`  set:      Class of ${ADMIN_SET}`);
