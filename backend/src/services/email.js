@@ -104,6 +104,20 @@ async function sendRegistrationConfirmation(user) {
   });
 }
 
+async function sendOtpCode(user, code, expiryMinutes) {
+  return sendMail({
+    to: user.email,
+    subject: 'Your verification code',
+    html: `
+      <h2>Your verification code</h2>
+      <p>Hi ${user.fullName},</p>
+      <p>Use the code below to complete your registration. It expires in <strong>${expiryMinutes} minutes</strong>.</p>
+      <p style="font-size:32px;font-weight:700;letter-spacing:8px;text-align:center;margin:24px 0;background:#f4f4f5;padding:16px;border-radius:12px;">${code}</p>
+      <p>If you didn't request this code, you can safely ignore this email.</p>
+    `,
+  });
+}
+
 async function sendVerificationApproved(user) {
   const loginUrl = `${config.frontendUrl}/login`;
   return sendMail({
@@ -191,6 +205,7 @@ async function sendNewRegistrationAlert(adminEmail, user) {
 module.exports = {
   sendMail,
   sendRegistrationConfirmation,
+  sendOtpCode,
   sendVerificationApproved,
   sendRegistrationRejected,
   sendPaymentConfirmation,

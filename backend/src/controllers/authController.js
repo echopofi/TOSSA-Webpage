@@ -502,4 +502,4 @@ async function changePassword(req, res) {
   }
 }
 
-module.exports = { register, login, refresh, logout, me, updateProfile, changePassword };
+module.exports = { register, login, refresh, logout, me, updateProfile, changePassword, generateAccessToken, generateRefreshToken, hashToken };

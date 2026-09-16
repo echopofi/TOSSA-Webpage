@@ -29,6 +29,13 @@ module.exports = {
   // abandoned/broken and retired so the member can retry instead of being stuck.
   registrationPaymentPendingTtlMinutes:
     parseInt(process.env.REGISTRATION_PAYMENT_PENDING_TTL_MINUTES, 10) || 30,
+  otp: {
+    expiryMinutes: parseInt(process.env.OTP_EXPIRY_MINUTES, 10) || 15,
+    maxAttempts: 5,
+    // Server-side guard against OTP-email spam: how long (seconds) a payment
+    // reference must wait before a fresh code can be requested again.
+    resendCooldownSeconds: parseInt(process.env.OTP_RESEND_COOLDOWN_SECONDS, 10) || 60,
+  },
   email: {
     // Resend API takes precedence when RESEND_API_KEY is set; SMTP (nodemailer)
     // remains as a fallback for self-hosted setups.
