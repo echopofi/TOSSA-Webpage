@@ -367,7 +367,6 @@ export interface BioData {
   state: string;
   country: string;
   blood_group: BloodGroup;
-  display_blood_group_on_id: boolean;
   occupation_category: OccupationCategory;
   specialization: string;           // profession / area of specialization
   membership_declaration: boolean;
@@ -388,7 +387,6 @@ export interface BioDataPayload {
   state: string;
   country: string;
   bloodGroup: BloodGroup;
-  displayBloodGroupOnId: boolean;
   occupationCategory: OccupationCategory;
   specialization: string;
   membershipDeclaration: boolean;

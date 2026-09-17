@@ -6,14 +6,13 @@ import Link from "next/link";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import Select from "@/components/ui/Select";
 import StatusPill from "@/components/ui/StatusPill";
 import {
   Mail,
   Phone,
   MapPin,
   GraduationCap,
-  UserCircle2,
+  User,
   KeyRound,
   CheckCircle2,
   AlertCircle,
@@ -21,24 +20,24 @@ import {
   CalendarDays,
   ArrowRight,
   LoaderCircle,
+  CreditCard,
+  HeartPulse,
 } from "lucide-react";
 import {
   apiMe,
   apiUpdateProfile,
   apiChangePassword,
+  apiGetBioData,
   ApiRequestError,
 } from "@/lib/api";
-import { saveCurrentUser } from "@/lib/session";
+import { saveCurrentUser, getCurrentUser } from "@/lib/session";
 import { uploadMemberPhoto } from "@/lib/upload";
 import { initials, formatDate } from "@/lib/utils";
-import type { Member } from "@/lib/types";
-import { NAME_MAX, PHONE_MAX, PASSWORD_MAX } from "@/lib/validation";
+import type { Member, BioData } from "@/lib/types";
+import { PASSWORD_MAX } from "@/lib/validation";
 import { Reveal, Stagger, StaggerItem, fadeUp } from "@/lib/motion";
 
 interface ProfileForm {
-  fullName: string;
-  gender: string;
-  phone: string;
   address: string;
   bio: string;
 }
@@ -51,6 +50,7 @@ interface PasswordForm {
 
 export default function ProfilePage() {
   const [member, setMember]         = useState<Member | null>(null);
+  const [bioData, setBioData]       = useState<BioData | null>(null);
   const [photo, setPhoto]           = useState("");
   const [loading, setLoading]       = useState(true);
   const [uploading, setUploading]   = useState(false);
@@ -68,14 +68,16 @@ export default function ProfilePage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await apiMe();
+        const [meRes, bioRes] = await Promise.all([
+          apiMe(),
+          apiGetBioData(),
+        ]);
+        const res = meRes;
         const m = res.data.member;
         setMember(m);
+        setBioData(bioRes.data);
         setPhoto(m.profile_image ?? "");
         profileForm.reset({
-          fullName: res.data.user.full_name,
-          gender: m.gender ? m.gender.charAt(0).toUpperCase() + m.gender.slice(1) : "",
-          phone: m.phone ?? "",
           address: m.address ?? "",
           bio: m.bio ?? "",
         });
@@ -100,9 +102,6 @@ export default function ProfilePage() {
           setMember(fallback);
           setPhoto(session.profile_image ?? "");
           profileForm.reset({
-            fullName: session.full_name,
-            gender: session.gender ?? "",
-            phone: session.phone ?? "",
             address: session.address ?? "",
             bio: session.bio ?? "",
           });
@@ -139,9 +138,6 @@ export default function ProfilePage() {
     setProfileMessage(null);
     try {
       const res = await apiUpdateProfile({
-        fullName: data.fullName.trim(),
-        gender: data.gender || undefined,
-        phone: data.phone.trim() || undefined,
         address: data.address.trim() || undefined,
         bio: data.bio.trim() || undefined,
         profileImage: photo || undefined,
@@ -158,6 +154,8 @@ export default function ProfilePage() {
         address: updated.member.address,
         bio: updated.member.bio,
         profile_image: updated.member.profile_image,
+        membership_number: updated.member.membership_number,
+        blood_group: updated.member.blood_group,
         is_active: prev?.is_active ?? true,
         joined_at: prev?.joined_at ?? new Date().toISOString(),
         set_id: prev?.set_id,
@@ -165,7 +163,9 @@ export default function ProfilePage() {
         role_in_set: prev?.role_in_set,
         matric_number: updated.member.matric_number,
       }));
+      const session = getCurrentUser();
       saveCurrentUser({
+        ...(session || {}),
         full_name: updated.user.full_name,
         email: updated.user.email,
         role: updated.user.role,
@@ -174,6 +174,8 @@ export default function ProfilePage() {
         address: updated.member.address,
         bio: updated.member.bio,
         profile_image: updated.member.profile_image,
+        membership_number: updated.member.membership_number,
+        bio_data_submitted: updated.member.bio_data_submitted,
         setId: member?.set_id,
         set_name: member?.set_name,
       });
@@ -312,22 +314,40 @@ export default function ProfilePage() {
                     </Link>
                   </div>
                 )}
+                {member.membership_number && (
+                  <div className="flex items-center gap-2 text-[var(--text-muted)]">
+                    <CreditCard size={14} className="shrink-0" />
+                    <span className="text-xs font-mono font-medium">{member.membership_number}</span>
+                  </div>
+                )}
                 {member.email && (
                   <div className="flex items-center gap-2 text-[var(--text-muted)]">
                     <Mail size={14} className="shrink-0" />
                     <span className="truncate text-xs">{member.email}</span>
                   </div>
                 )}
-                {member.phone && (
+                {bioData?.gender && (
+                  <div className="flex items-center gap-2 text-[var(--text-muted)]">
+                    <User size={14} className="shrink-0" />
+                    <span className="truncate text-xs">{bioData.gender}</span>
+                  </div>
+                )}
+                {bioData?.phone && (
                   <div className="flex items-center gap-2 text-[var(--text-muted)]">
                     <Phone size={14} className="shrink-0" />
-                    <span className="truncate text-xs">{member.phone}</span>
+                    <span className="truncate text-xs">{bioData.phone}</span>
                   </div>
                 )}
                 {member.address && (
                   <div className="flex items-center gap-2 text-[var(--text-muted)]">
                     <MapPin size={14} className="shrink-0" />
                     <span className="truncate text-xs">{member.address}</span>
+                  </div>
+                )}
+                {bioData?.blood_group && (
+                  <div className="flex items-center gap-2 text-[var(--text-muted)]">
+                    <HeartPulse size={14} className="shrink-0" />
+                    <span className="truncate text-xs">{bioData.blood_group}</span>
                   </div>
                 )}
               </div>
@@ -352,11 +372,12 @@ export default function ProfilePage() {
 
         {/* ── Forms column ───────────────────────────────────────────────────── */}
         <div className="lg:col-span-2 flex flex-col gap-6">
-          {/* Edit profile */}
+          {/* Edit profile — only address and bio are editable here; full name, gender,
+              and phone are sourced from Bio Data and managed on the Bio Data form */}
           <Reveal variants={fadeUp}>
             <Card>
               <h2 className="text-base font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)] mb-5 flex items-center gap-2">
-                <UserCircle2 size={18} className="text-[var(--primary)]" />
+                <User size={18} className="text-[var(--primary)]" />
                 Edit Profile
               </h2>
 
@@ -373,36 +394,28 @@ export default function ProfilePage() {
                 </div>
               )}
 
+              <div className="flex flex-col gap-4 mb-6 text-sm">
+                {bioData?.full_name && (
+                  <div>
+                    <span className="text-xs text-[var(--text-muted)]">Full name</span>
+                    <p className="text-[var(--text-heading)] font-medium">{bioData.full_name}</p>
+                  </div>
+                )}
+                {bioData?.gender && (
+                  <div>
+                    <span className="text-xs text-[var(--text-muted)]">Gender</span>
+                    <p className="text-[var(--text-heading)] font-medium">{bioData.gender}</p>
+                  </div>
+                )}
+                {bioData?.phone && (
+                  <div>
+                    <span className="text-xs text-[var(--text-muted)]">Phone</span>
+                    <p className="text-[var(--text-heading)] font-medium">{bioData.phone}</p>
+                  </div>
+                )}
+              </div>
+
               <form onSubmit={profileForm.handleSubmit(onSaveProfile)} className="flex flex-col gap-4">
-                <Input
-                  label="Full name"
-                  placeholder="Your full name"
-                  error={profileForm.formState.errors.fullName?.message}
-                  {...profileForm.register("fullName", {
-                    required: "Full name is required",
-                    maxLength: { value: NAME_MAX, message: "Full name is too long" },
-                  })}
-                />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Select
-                    label="Gender"
-                    placeholder="Select gender"
-                    options={[
-                      { value: "Male", label: "Male" },
-                      { value: "Female", label: "Female" },
-                    ]}
-                    {...profileForm.register("gender")}
-                  />
-                  <Input
-                    label="Phone"
-                    type="tel"
-                    placeholder="+234 800 000 0000"
-                    error={profileForm.formState.errors.phone?.message}
-                    {...profileForm.register("phone", {
-                      maxLength: { value: PHONE_MAX, message: "Phone number is too long" },
-                    })}
-                  />
-                </div>
                 <Input
                   label="Address"
                   placeholder="City, State, Country"

@@ -14,6 +14,7 @@ import {
   Shield,
   Settings,
   Images,
+  ScrollText,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -28,7 +29,9 @@ const navItems = [
     icon: User,
     label: "My Profile",
     verifiedOnly: true, // only verified/paid members see their profile
+    bioDataOnly: true,  // and only after they've submitted their bio data
   },
+  { href: "/constitution", icon: ScrollText,      label: "Constitution", verifiedOnly: true },
   { href: "/admin",        icon: Megaphone,       label: "Admin Panel", admin: true },
   { href: "/admin/sets",   icon: Images,          label: "Set Media",   admin: true },
   { href: "/admin/settings", icon: Settings,      label: "Admin Settings", admin: true },
@@ -70,7 +73,8 @@ export default function Sidebar({ isAdmin }: SidebarProps) {
           .filter(
             (item) =>
               (item.admin ? isAdminUser : true) &&
-              (!item.verifiedOnly || isVerifiedUser)
+              (!item.verifiedOnly || isVerifiedUser) &&
+              (!item.bioDataOnly || currentUser?.bio_data_submitted === true)
           )
           .map(({ href, icon: Icon, label }) => {
             const active = pathname === href || pathname.startsWith(href + "/");

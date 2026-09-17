@@ -70,7 +70,7 @@ import {
   MOCK_ELECTION_APPLICATIONS,
 } from "@/lib/mockData";
 
-import { getCurrentUser, getAccessToken, saveAccessToken, clearAccessToken, clearCurrentUser } from "@/lib/session";
+import { getCurrentUser, getAccessToken, saveAccessToken, clearAccessToken, clearCurrentUser, saveCurrentUser } from "@/lib/session";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
