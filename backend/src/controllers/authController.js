@@ -146,15 +146,20 @@ async function register(req, res) {
 
     prisma.user
       .findFirst({ where: { role: 'admin' }, select: { email: true } })
-      .then((admin) => {
-        if (admin) {
-          return sendNewRegistrationAlert(admin.email, {
-            email: user.email,
-            fullName: user.fullName,
-          });
+      .then(async (admin) => {
+        if (!admin) {
+          console.warn('New-registration admin alert skipped: no admin account in DB');
+          return null;
         }
-        console.warn('New-registration admin alert skipped: no admin account in DB');
-        return null;
+        const payment = await prisma.payment.findFirst({
+          where: { memberId: member.id },
+          orderBy: { createdAt: 'desc' },
+        });
+        return sendNewRegistrationAlert(
+          admin.email,
+          { email: user.email, fullName: user.fullName },
+          payment
+        );
       })
       .catch((err) => console.error('New-registration admin-alert email call failed:', err && err.message));
 

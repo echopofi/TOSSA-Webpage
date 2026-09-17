@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const prisma = require('../config/prisma');
 const config = require('../config');
 const paystack = require('../services/paystack');
-const { sendPaymentConfirmation, sendOtpCode } = require('../services/email');
+const { sendPaymentConfirmation, sendOtpCode, sendNewRegistrationAlert } = require('../services/email');
 const {
   generateAccessToken,
   generateRefreshToken,
@@ -241,6 +241,29 @@ async function verifyPayment(req, res) {
         { email: user.email, fullName: user.fullName },
         { amount: payment.amount, reference, type: payment.paymentType }
       ).catch(() => {});
+    }
+
+    // Keep the admin's registration alert in sync with the real payment state —
+    // report success/failed/abandoned honestly instead of a registration being
+    // assumed paid just because it exists.
+    const admin = await prisma.user.findFirst({
+      where: { role: 'admin' },
+      select: { email: true },
+    });
+    if (admin) {
+      const paymentMember = await prisma.member.findUnique({
+        where: { id: payment.memberId },
+        include: { user: { select: { fullName: true, email: true } } },
+      });
+      if (paymentMember) {
+        sendNewRegistrationAlert(admin.email, paymentMember.user, {
+          status: newStatus,
+          amount: payment.amount,
+          reference,
+          createdAt: payment.createdAt,
+          paidAt: newStatus === 'success' ? new Date() : null,
+        }).catch(() => {});
+      }
     }
 
     res.json({ reference, status: newStatus, amount: tx.amount });

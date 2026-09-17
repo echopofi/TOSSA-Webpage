@@ -186,7 +186,57 @@ async function sendDuesReminder(user, cycle) {
   });
 }
 
-async function sendNewRegistrationAlert(adminEmail, user) {
+const PAYMENT_STATUS_LABELS = {
+  pending: 'Pending',
+  success: 'Success',
+  failed: 'Failed',
+  abandoned: 'Abandoned (not completed)',
+};
+
+function formatDateTime(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'UTC',
+    timeZoneName: 'short',
+  });
+}
+
+// Sent to an admin when a new account registers and needs verification.
+// payment (optional) reflects the actual payment state at send time — a
+// registration without a completed payment is reported honestly rather than
+// implying success.
+async function sendNewRegistrationAlert(adminEmail, user, payment = null) {
+  let paymentBlock;
+  if (payment && payment.status) {
+    const statusLabel = PAYMENT_STATUS_LABELS[payment.status] || payment.status;
+    const attemptedAt = formatDateTime(payment.paidAt || payment.createdAt);
+    const reference = payment.reference || payment.paystackReference || '—';
+    paymentBlock = `
+      <h3>Payment details</h3>
+      <ul>
+        <li><strong>Payment status:</strong> ${statusLabel}</li>
+        <li><strong>Amount ${payment.status === 'success' ? 'paid' : 'attempted'}:</strong> ₦${(payment.amount / 100).toLocaleString('en-NG')}</li>
+        <li><strong>Payment reference:</strong> ${reference}</li>
+        <li><strong>Date/time of attempt:</strong> ${attemptedAt || '—'}</li>
+      </ul>`;
+  } else {
+    paymentBlock = `
+      <h3>Payment details</h3>
+      <ul>
+        <li><strong>Payment status:</strong> No payment yet</li>
+        <li><strong>Amount attempted:</strong> —</li>
+        <li><strong>Payment reference:</strong> —</li>
+        <li><strong>Date/time of attempt:</strong> —</li>
+      </ul>`;
+  }
+
   return sendMail({
     to: adminEmail,
     subject: 'New registration awaiting verification',
@@ -197,6 +247,7 @@ async function sendNewRegistrationAlert(adminEmail, user) {
         <li><strong>Name:</strong> ${user.fullName}</li>
         <li><strong>Email:</strong> ${user.email}</li>
       </ul>
+      ${paymentBlock}
       <p>Sign in to the admin panel to verify this account.</p>
     `,
   });
