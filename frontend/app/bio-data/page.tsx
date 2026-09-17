@@ -461,8 +461,8 @@ export default function BioDataPage() {
                 />
                 <span className="text-sm text-[var(--text-body)]">
                   <strong className="text-[var(--text-heading)]">Membership Declaration.</strong> I
-                  declare that I am a member of the Taraba State Special Science School Old
-                  Students&apos; Association, and that the information I provide here is true, complete,
+                  declare that I am a member of the TCNN-Staff Secondary School Old Students
+                  Association, and that the information I provide here is true, complete,
                   and accurate to the best of my knowledge. I understand that providing false
                   information may affect my membership and ID card.
                 </span>
