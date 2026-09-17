@@ -3,17 +3,25 @@ const { getBioData, saveBioData } = require('../src/controllers/bioDataControlle
 jest.mock('../src/config/prisma', () => ({
   member: {
     findUnique: jest.fn(),
+    update: jest.fn(),
   },
   bioData: {
     findUnique: jest.fn(),
     upsert: jest.fn(),
   },
+  $transaction: jest.fn(),
+  $queryRaw: jest.fn(),
 }));
 
 const prisma = require('../src/config/prisma');
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // Run the transactional callback against the same mocked client so the
+  // member-number UPDATE and bioData upsert are observable.
+  prisma.$transaction.mockImplementation((cb) => cb(prisma));
+  prisma.$queryRaw.mockResolvedValue([{ next_member_seq: 1 }]);
+  prisma.member.update.mockResolvedValue({});
 });
 
 function makeRes() {
@@ -41,14 +49,17 @@ const VALID_BODY = {
   state: 'Plateau',
   country: 'Nigeria',
   bloodGroup: 'O+',
-  displayBloodGroupOnId: false,
   occupationCategory: 'professional_practice',
   specialization: 'Medical Doctor',
   membershipDeclaration: true,
   dataPrivacyConsent: true,
 };
 
-const MEMBER = { id: 'member-id-1' };
+const MEMBER = {
+  id: 'member-id-1',
+  membershipNumber: null,
+  setMembers: [{ set: { id: 'set-1', setName: '2015' } }],
+};
 
 describe('BioData endpoints', () => {
   describe('GET /api/bio-data', () => {
@@ -70,7 +81,7 @@ describe('BioData endpoints', () => {
         formerNickname: 'Necklace', gender: 'Female', setYear: 2015,
         phone: '+2348012345678', email: 'angela@example.com',
         city: 'Jos', state: 'Plateau', country: 'Nigeria',
-        bloodGroup: 'O+', displayBloodGroupOnId: false,
+        bloodGroup: 'O+',
         occupationCategory: 'professional_practice', specialization: 'Medical Doctor',
         membershipDeclaration: true, dataPrivacyConsent: true,
         createdAt: new Date('2026-01-01T00:00:00Z'), updatedAt: new Date('2026-01-01T00:00:00Z'),
@@ -85,7 +96,7 @@ describe('BioData endpoints', () => {
         former_nickname: 'Necklace', gender: 'Female', set_year: 2015,
         phone: '+2348012345678', email: 'angela@example.com',
         city: 'Jos', state: 'Plateau', country: 'Nigeria',
-        blood_group: 'O+', display_blood_group_on_id: false,
+        blood_group: 'O+',
         occupation_category: 'professional_practice', specialization: 'Medical Doctor',
         membership_declaration: true, data_privacy_consent: true,
         created_at: expect.any(Date), updated_at: expect.any(Date),
@@ -187,14 +198,14 @@ describe('BioData endpoints', () => {
       expect(prisma.bioData.upsert).not.toHaveBeenCalled();
     });
 
-    test('creates a record on first submission', async () => {
+    test('creates a record and issues a membership number on first submission', async () => {
       prisma.member.findUnique.mockResolvedValue(MEMBER);
       prisma.bioData.upsert.mockResolvedValue({
         id: 'bio-1', memberId: 'member-id-1', fullName: 'Angela Markel',
         formerNickname: 'Necklace', gender: 'Female', setYear: 2015,
         phone: '+2348012345678', email: 'angela@example.com',
         city: 'Jos', state: 'Plateau', country: 'Nigeria',
-        bloodGroup: 'O+', displayBloodGroupOnId: false,
+        bloodGroup: 'O+',
         occupationCategory: 'professional_practice', specialization: 'Medical Doctor',
         membershipDeclaration: true, dataPrivacyConsent: true,
         createdAt: new Date(), updatedAt: new Date(),
@@ -204,6 +215,13 @@ describe('BioData endpoints', () => {
       await saveBioData({ user: { id: 'user-id-1' }, body: VALID_BODY }, res);
 
       expect(res.statusCode).toBe(200);
+      // Counter is advanced once against the member's set and the permanent
+      // number is written to the member before the bio data row is stored.
+      expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+      expect(prisma.member.update).toHaveBeenCalledWith({
+        where: { id: 'member-id-1' },
+        data: { membershipNumber: 'TOSA/2015/0001' },
+      });
       expect(prisma.bioData.upsert).toHaveBeenCalledTimes(1);
       expect(prisma.bioData.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -212,6 +230,27 @@ describe('BioData endpoints', () => {
         })
       );
       expect(res.body.bioData.member_id).toBe('member-id-1');
+    });
+
+    test('does not re-issue a membership number on later edits', async () => {
+      prisma.member.findUnique.mockResolvedValue({ ...MEMBER, membershipNumber: 'TOSA/2015/0001' });
+      prisma.bioData.upsert.mockResolvedValue({
+        id: 'bio-1', memberId: 'member-id-1', fullName: 'Angela Markel',
+        formerNickname: 'Necklace', gender: 'Female', setYear: 2015,
+        phone: '+2348012345678', email: 'angela@example.com',
+        city: 'Jos', state: 'Plateau', country: 'Nigeria',
+        bloodGroup: 'O+',
+        occupationCategory: 'professional_practice', specialization: 'Medical Doctor',
+        membershipDeclaration: true, dataPrivacyConsent: true,
+        createdAt: new Date(), updatedAt: new Date(),
+      });
+      const res = makeRes();
+
+      await saveBioData({ user: { id: 'user-id-1' }, body: VALID_BODY }, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(prisma.$queryRaw).not.toHaveBeenCalled();
+      expect(prisma.member.update).not.toHaveBeenCalled();
     });
 
     test('404 when the user has no member record', async () => {
