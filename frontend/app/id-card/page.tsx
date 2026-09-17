@@ -10,6 +10,47 @@ import type { Member } from "@/lib/types";
 
 type CardFace = "front" | "back";
 
+/**
+ * Swap every remote <img> under `root` for an inline data URL so html-to-image
+ * never has to re-fetch a cross-origin URL (Cloudinary photo) during export,
+ * which is what made exported cards render without the profile picture.
+ * Restores the original src after the caller is done.
+ */
+async function inlineImagesForExport(root: HTMLElement): Promise<() => void> {
+  const swaps: Array<{ img: HTMLImageElement; original: string }> = [];
+  const pending: Promise<void>[] = [];
+
+  root.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
+    const src = img.getAttribute("src") ?? "";
+    if (!/^https?:\/\//i.test(src)) return;
+    swaps.push({ img, original: src });
+    pending.push(
+      (async () => {
+        try {
+          const res = await fetch(src, { mode: "cors", cache: "force-cache" });
+          if (!res.ok) return;
+          const blob = await res.blob();
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(blob);
+          });
+          img.setAttribute("src", dataUrl);
+        } catch {
+          /* keep the original src — export may still work without it */
+        }
+      })()
+    );
+  });
+
+  await Promise.all(pending);
+
+  return () => {
+    for (const { img, original } of swaps) img.setAttribute("src", original);
+  };
+}
+
 export default function IdCardPage() {
   const [member, setMember]           = useState<Member | null>(null);
   const [loading, setLoading]         = useState(true);
@@ -33,9 +74,12 @@ export default function IdCardPage() {
     if (!member || !node) return;
     setDownloading(true);
     setError("");
+    let restore: (() => void) | null = null;
     try {
-      // Export whichever face is currently showing — entirely client-side.
-      const dataUrl = await toPng(node, { pixelRatio: 2, cacheBust: true });
+      // Inline remote images (profile photo) so toPng doesn't re-fetch a
+      // cross-origin URL, then export whichever face is currently showing.
+      restore = await inlineImagesForExport(node);
+      const dataUrl = await toPng(node, { pixelRatio: 2 });
       const a = document.createElement("a");
       a.href = dataUrl;
       a.download = `tssosa-id-${facing}.png`;
@@ -45,6 +89,7 @@ export default function IdCardPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create the image");
     } finally {
+      restore?.();
       setDownloading(false);
     }
   }

@@ -57,7 +57,6 @@ export function MemberCardFront({ member }: { member: Member }) {
             <img
               src={member.profile_image}
               alt={member.full_name}
-              crossOrigin="anonymous"
               className="w-20 h-20 rounded-xl object-cover border-2 border-white/70 bg-white"
             />
           ) : (
@@ -72,7 +71,14 @@ export function MemberCardFront({ member }: { member: Member }) {
             <p className="text-sm text-white/85">
               Class of {(member.set_name ?? "—").length ? member.set_name : member.set_id ?? "—"}
             </p>
-            {member.gender && <p className="text-xs text-white/70 mt-0.5">{member.gender}</p>}
+            <div className="flex items-center gap-2 mt-0.5">
+              {member.gender && <p className="text-xs text-white/70">{member.gender}</p>}
+              {member.blood_group && (
+                <span className="text-[10px] font-medium uppercase tracking-wide rounded bg-white/20 px-1.5 py-0.5">
+                  {member.blood_group}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -89,7 +95,7 @@ export function MemberCardBack({ member, membershipNumber }: MemberIdCardProps) 
     .join("")
     .toUpperCase();
 
-  const memNumber = membershipNumber ?? member.id.toUpperCase().replace(/_/g, "-");
+  const memNumber = membershipNumber ?? member.membership_number ?? "—";
 
   return (
     <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] shadow-sm p-5 flex flex-col gap-3">
@@ -112,7 +118,7 @@ export function MemberCardBack({ member, membershipNumber }: MemberIdCardProps) 
       <div className="flex items-center justify-between text-xs">
         <span className="text-[var(--text-muted)]">Member</span>
         <span className="text-[var(--text-heading)]">
-          {initialsText || "—"} · {member.id.slice(-6).toUpperCase()}
+          {initialsText || "—"} · {memNumber}
         </span>
       </div>
     </div>
