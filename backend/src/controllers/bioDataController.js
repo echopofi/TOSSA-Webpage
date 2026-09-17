@@ -211,7 +211,7 @@ async function saveBioData(req, res) {
         const [seq] = await tx.$queryRaw`
           UPDATE "graduation_sets"
           SET "next_member_seq" = "next_member_seq" + 1
-          WHERE "id" = ${primarySet.id}
+          WHERE "id" = ${primarySet.id}::uuid
           RETURNING "next_member_seq"
         `;
         const setYear = Number.parseInt(primarySet.setName, 10) || b.setYear;
