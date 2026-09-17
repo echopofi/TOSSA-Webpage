@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const prisma = require('../config/prisma');
+const config = require('../config');
 const paystack = require('../services/paystack');
 const { sendPaymentConfirmation } = require('../services/email');
 
@@ -120,6 +121,7 @@ async function applyForPosition(req, res) {
         election_application_id: application.id,
         type: 'election',
       },
+      callback_url: `${config.frontendUrl}/verify-payment?reference=${reference}`,
     });
 
     await prisma.electionApplication.update({

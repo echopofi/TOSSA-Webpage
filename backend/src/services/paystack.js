@@ -52,14 +52,18 @@ async function paystackRequest(path, method = 'GET', body = null) {
   return data;
 }
 
-async function initializeTransaction({ email, amount, reference, metadata = {} }) {
-  return paystackRequest('/transaction/initialize', 'POST', {
+async function initializeTransaction({ email, amount, reference, metadata = {}, callback_url }) {
+  const body = {
     email,
     amount, // in kobo
     reference,
     metadata,
     currency: 'NGN',
-  });
+  };
+  if (callback_url) {
+    body.callback_url = callback_url;
+  }
+  return paystackRequest('/transaction/initialize', 'POST', body);
 }
 
 async function verifyTransaction(reference) {

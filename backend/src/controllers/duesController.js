@@ -162,6 +162,7 @@ async function initiateDuesPayment(req, res) {
       amount,
       reference,
       metadata: { member_id: member.id, dues_cycle_id: cycleId, type: 'dues' },
+      callback_url: `${config.frontendUrl}/verify-payment?reference=${reference}`,
     });
 
     await prisma.duesPayment.update({
