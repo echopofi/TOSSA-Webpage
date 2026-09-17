@@ -379,7 +379,7 @@ export async function apiMe(): Promise<ApiSuccess<AuthMeResponse>> {
     const res = await authedFetch("/api/auth/me");
     const json = (await res.json()) as
       | {
-          user?: { id: string; email: string; fullName: string; role?: string; isVerified?: boolean };
+          user?: { id: string; email: string; fullName: string; role?: string; isVerified?: boolean; createdAt?: string };
 member?: {
             id: string;
             matricNumber?: string | null;
@@ -388,6 +388,9 @@ member?: {
             address?: string | null;
             bio?: string | null;
             profileImage?: string | null;
+            membershipNumber?: string | null;
+            bloodGroup?: string | null;
+            bioDataSubmitted?: boolean;
             isActive?: boolean;
             joinedAt?: string;
             sets?: Array<{ id: string; setName: string; roleInSet?: string | null }>;
@@ -399,31 +402,57 @@ member?: {
       throw new ApiRequestError(0, "Unexpected server response. Please try again.");
     }
     const firstSet = json?.member?.sets?.[0];
+    const user: AuthUser = {
+      id: u.id,
+      full_name: u.fullName,
+      email: u.email,
+      role: u.role === "admin" ? "admin" : "member",
+      is_verified: !!u.isVerified,
+    };
+    const member: Member = {
+      id: json?.member?.id ?? "",
+      user_id: u.id,
+      full_name: u.fullName,
+      email: u.email,
+      matric_number: json?.member?.matricNumber ?? undefined,
+      gender: json?.member?.gender ?? undefined,
+      phone: json?.member?.phone ?? undefined,
+      address: json?.member?.address ?? undefined,
+      bio: json?.member?.bio ?? undefined,
+      profile_image: json?.member?.profileImage ?? undefined,
+      membership_number: json?.member?.membershipNumber ?? undefined,
+      blood_group: json?.member?.bloodGroup ?? undefined,
+      bio_data_submitted: json?.member?.bioDataSubmitted ?? false,
+      is_active: json?.member?.isActive ?? true,
+      joined_at: json?.member?.joinedAt ?? new Date().toISOString(),
+      set_id: firstSet?.id,
+      set_name: firstSet?.setName,
+      role_in_set: firstSet?.roleInSet ?? undefined,
+    };
+    // Keep the local identity fresh so the sidebar gating (bio data submitted)
+    // reflects server state without a manual reload.
+    const current = getCurrentUser();
+    if (current) {
+      saveCurrentUser({
+        ...current,
+        full_name: member.full_name,
+        email: member.email ?? current.email,
+        role: user.role,
+        is_verified: user.is_verified,
+        bio_data_submitted: member.bio_data_submitted,
+        membership_number: member.membership_number,
+        setId: member.set_id ?? current.setId,
+        set_name: member.set_name ?? current.set_name,
+        gender: member.gender ?? current.gender,
+        phone: member.phone ?? current.phone,
+        address: member.address ?? current.address,
+        bio: member.bio ?? current.bio,
+        profile_image: member.profile_image ?? current.profile_image,
+      });
+    }
     return ok({
-      user: {
-        id: u.id,
-        full_name: u.fullName,
-        email: u.email,
-        role: u.role === "admin" ? "admin" : "member",
-        is_verified: !!u.isVerified,
-      },
-      member: {
-        id: json?.member?.id ?? "",
-        user_id: u.id,
-        full_name: u.fullName,
-        email: u.email,
-        matric_number: json?.member?.matricNumber ?? undefined,
-        gender: json?.member?.gender ?? undefined,
-        phone: json?.member?.phone ?? undefined,
-        address: json?.member?.address ?? undefined,
-        bio: json?.member?.bio ?? undefined,
-        profile_image: json?.member?.profileImage ?? undefined,
-        is_active: json?.member?.isActive ?? true,
-        joined_at: json?.member?.joinedAt ?? new Date().toISOString(),
-        set_id: firstSet?.id,
-        set_name: firstSet?.setName,
-        role_in_set: firstSet?.roleInSet ?? undefined,
-      },
+      user,
+      member,
       set: firstSet
         ? {
             id: firstSet.id,
@@ -500,6 +529,8 @@ function memberFromSession(): Member | null {
     address: session.address,
     bio: session.bio,
     profile_image: session.profile_image,
+    membership_number: session.membership_number,
+    bio_data_submitted: session.bio_data_submitted,
     is_active: true,
     joined_at: new Date().toISOString(),
     set_id: session.setId,
@@ -590,6 +621,9 @@ export async function apiUpdateProfile(payload: {
           address?: string | null;
           bio?: string | null;
           profileImage?: string | null;
+          membershipNumber?: string | null;
+          bloodGroup?: string | null;
+          bioDataSubmitted?: boolean;
         };
       }
     | undefined;
@@ -609,6 +643,9 @@ export async function apiUpdateProfile(payload: {
     address: m?.address ?? undefined,
     bio: m?.bio ?? undefined,
     profile_image: m?.profileImage ?? undefined,
+    membership_number: m?.membershipNumber ?? undefined,
+    blood_group: m?.bloodGroup ?? undefined,
+    bio_data_submitted: m?.bioDataSubmitted ?? false,
     is_active: true,
     joined_at: new Date().toISOString(),
   };

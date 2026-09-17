@@ -51,7 +51,6 @@ function serialize(record) {
     state: record.state,
     country: record.country,
     blood_group: record.bloodGroup,
-    display_blood_group_on_id: record.displayBloodGroupOnId,
     occupation_category: record.occupationCategory,
     specialization: record.specialization,
     membership_declaration: record.membershipDeclaration,
@@ -168,7 +167,14 @@ async function saveBioData(req, res) {
 
     const member = await prisma.member.findUnique({
       where: { userId: req.user.id },
-      select: { id: true },
+      select: {
+        id: true,
+        membershipNumber: true,
+        setMembers: {
+          include: { set: true },
+          orderBy: { joinedAt: 'asc' },
+        },
+      },
     });
     if (!member) {
       return res.status(404).json({ error: 'Member not found' });
@@ -185,17 +191,42 @@ async function saveBioData(req, res) {
       state: b.state.trim(),
       country: b.country.trim(),
       bloodGroup: b.bloodGroup,
-      displayBloodGroupOnId: b.displayBloodGroupOnId === true,
       occupationCategory: b.occupationCategory,
       specialization,
       membershipDeclaration: true,
       dataPrivacyConsent: true,
     };
 
-    const record = await prisma.bioData.upsert({
-      where: { memberId: member.id },
-      update: { ...data, updatedAt: new Date() },
-      create: { memberId: member.id, ...data },
+    const record = await prisma.$transaction(async (tx) => {
+      // A permanent membership number is issued exactly once — on the first bio
+      // data submission — never on later edits. Format: TOSA/{setYear}/{0001}.
+      // The counter lives on the member's graduation set row and is advanced with
+      // an atomic UPDATE ... RETURNING, so two members submitting for the same set
+      // year at the same time can never receive the same sequence number.
+      if (!member.membershipNumber) {
+        const primarySet = member.setMembers[0]?.set;
+        if (!primarySet) {
+          throw new Error('Member has no graduation set to number against');
+        }
+        const [seq] = await tx.$queryRaw`
+          UPDATE "graduation_sets"
+          SET "next_member_seq" = "next_member_seq" + 1
+          WHERE "id" = ${primarySet.id}
+          RETURNING "next_member_seq"
+        `;
+        const setYear = Number.parseInt(primarySet.setName, 10) || b.setYear;
+        const membershipNumber = `TOSA/${setYear}/${String(Number(seq.next_member_seq)).padStart(4, '0')}`;
+        await tx.member.update({
+          where: { id: member.id },
+          data: { membershipNumber },
+        });
+      }
+
+      return tx.bioData.upsert({
+        where: { memberId: member.id },
+        update: { ...data, updatedAt: new Date() },
+        create: { memberId: member.id, ...data },
+      });
     });
 
     res.json({ bioData: serialize(record) });

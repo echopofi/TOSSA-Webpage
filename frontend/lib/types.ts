@@ -70,6 +70,9 @@ export interface Member {
   matric_number?: string;
   bio?: string;
   profile_image?: string;     // Cloudinary URL — was avatar_url in v1
+  membership_number?: string; // TOSA/{setYear}/{seq}, issued on bio data submission
+  blood_group?: string;       // from bio_data.blood_group (always shown on ID card)
+  bio_data_submitted?: boolean; // bio_data row exists for this member
   is_active: boolean;
   joined_at: string;
   // Set info from set_members join

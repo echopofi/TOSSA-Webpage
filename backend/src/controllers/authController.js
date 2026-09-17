@@ -300,6 +300,9 @@ async function me(req, res) {
             setMembers: {
               include: { set: true },
             },
+            bioData: {
+              select: { bloodGroup: true },
+            },
           },
         },
       },
@@ -326,6 +329,9 @@ async function me(req, res) {
         address: user.member.address,
         bio: user.member.bio,
         profileImage: user.member.profileImage,
+        membershipNumber: user.member.membershipNumber,
+        bloodGroup: user.member.bioData?.bloodGroup ?? null,
+        bioDataSubmitted: !!user.member.bioData,
         isActive: user.member.isActive,
         joinedAt: user.member.joinedAt,
         sets: user.member.setMembers.map((sm) => ({
@@ -412,7 +418,14 @@ async function updateProfile(req, res) {
 
     const updated = await prisma.user.findUnique({
       where: { id: user.id },
-      include: { member: true },
+      include: {
+        member: {
+          include: {
+            bioData: { select: { bloodGroup: true } },
+            setMembers: { include: { set: true } },
+          },
+        },
+      },
     });
 
     res.json({
@@ -431,6 +444,9 @@ async function updateProfile(req, res) {
             address: updated.member.address,
             bio: updated.member.bio,
             profileImage: updated.member.profileImage,
+            membershipNumber: updated.member.membershipNumber,
+            bloodGroup: updated.member.bioData?.bloodGroup ?? null,
+            bioDataSubmitted: !!updated.member.bioData,
           }
         : null,
     });

@@ -14,6 +14,8 @@ export interface SessionUser {
   email: string;
   role?: "member" | "admin";
   is_verified?: boolean;
+  bio_data_submitted?: boolean;
+  membership_number?: string;
   setId?: string;
   set_name?: string;
   gender?: string;

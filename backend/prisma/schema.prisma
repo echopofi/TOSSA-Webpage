@@ -46,9 +46,10 @@ model Member {
   phone         String?  @db.VarChar(30)
   address       String?  @db.Text()
   bio           String?  @db.Text()
-  profileImage  String?  @map("profile_image") @db.Text()
-  isActive      Boolean  @default(true) @map("is_active")
-  joinedAt      DateTime @default(now()) @map("joined_at")
+  profileImage     String?  @map("profile_image") @db.Text()
+  membershipNumber String?  @unique @map("membership_number") @db.VarChar(30)
+  isActive         Boolean  @default(true) @map("is_active")
+  joinedAt         DateTime @default(now()) @map("joined_at")
 
   user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   setMembers           SetMember[]
@@ -78,7 +79,6 @@ model BioData {
   state                   String   @db.VarChar(120)
   country                 String   @db.VarChar(120)
   bloodGroup              String   @map("blood_group") @db.VarChar(10)
-  displayBloodGroupOnId   Boolean  @default(false) @map("display_blood_group_on_id")
   occupationCategory      String   @map("occupation_category") @db.VarChar(50)
   specialization          String   @db.VarChar(255)
   membershipDeclaration   Boolean  @map("membership_declaration")
@@ -101,6 +101,7 @@ model GraduationSet {
   coverImage         String?  @map("cover_image") @db.Text()
   coverImageCaption  String?  @map("cover_image_caption") @db.VarChar(255)
   isActive           Boolean  @default(true) @map("is_active")
+  nextMemberSeq      Int      @default(0) @map("next_member_seq")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @default(now()) @map("updated_at")
 
