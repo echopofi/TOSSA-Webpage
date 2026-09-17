@@ -44,7 +44,6 @@ interface BioDataForm {
   state: string;
   country: string;
   bloodGroup: string;
-  displayBloodGroupOnId: boolean;
   occupationCategory: string;
   specialization: string;
   membershipDeclaration: boolean;
@@ -77,7 +76,6 @@ const EMPTY_FORM: BioDataForm = {
   state: "",
   country: "",
   bloodGroup: "",
-  displayBloodGroupOnId: false,
   occupationCategory: "",
   specialization: "",
   membershipDeclaration: false,
@@ -96,7 +94,6 @@ function toPayload(f: BioDataForm): BioDataPayload {
     state: f.state.trim(),
     country: f.country.trim(),
     bloodGroup: f.bloodGroup as BloodGroup,
-    displayBloodGroupOnId: f.displayBloodGroupOnId,
     occupationCategory: f.occupationCategory as OccupationCategory,
     specialization: f.specialization.trim(),
     membershipDeclaration: f.membershipDeclaration,
@@ -116,7 +113,6 @@ function fromPayload(b: BioData): BioDataForm {
     state: b.state,
     country: b.country,
     bloodGroup: b.blood_group,
-    displayBloodGroupOnId: b.display_blood_group_on_id,
     occupationCategory: b.occupation_category,
     specialization: b.specialization,
     membershipDeclaration: b.membership_declaration,
@@ -311,17 +307,21 @@ export default function BioDataPage() {
                   ]}
                   {...bioForm.register("gender", { required: "Gender is required" })}
                 />
-                <Input
-                  label="Set / Admission year"
-                  type="number"
-                  placeholder="e.g. 2015"
-                  error={bioForm.formState.errors.setYear?.message}
-                  {...bioForm.register("setYear", {
-                    required: "Admission year is required",
-                    min: { value: MIN_SET_YEAR, message: "Admission year is too early" },
-                    max: { value: CURRENT_YEAR + 1, message: "Admission year is invalid" },
-                  })}
-                />
+                <div className="flex flex-col gap-1">
+                  <Input
+                    label="Set / Admission year"
+                    type="number"
+                    placeholder="e.g. 2015"
+                    readOnly
+                    hint="Locked from your registration set."
+                    error={bioForm.formState.errors.setYear?.message}
+                    {...bioForm.register("setYear", {
+                      required: "Admission year is required",
+                      min: { value: MIN_SET_YEAR, message: "Admission year is too early" },
+                      max: { value: CURRENT_YEAR + 1, message: "Admission year is invalid" },
+                    })}
+                  />
+                </div>
               </div>
             </div>
           </Card>
@@ -346,17 +346,21 @@ export default function BioDataPage() {
                     maxLength: { value: PHONE_MAX, message: "Phone number is too long" },
                   })}
                 />
-                <Input
-                  label="Email"
-                  type="email"
-                  placeholder="you@example.com"
-                  error={bioForm.formState.errors.email?.message}
-                  {...bioForm.register("email", {
-                    required: "Email is required",
-                    maxLength: { value: EMAIL_MAX, message: "Email is too long" },
-                    pattern: { value: EMAIL_REGEX, message: "Enter a valid email address" },
-                  })}
-                />
+                <div className="flex flex-col gap-1">
+                  <Input
+                    label="Email"
+                    type="email"
+                    placeholder="you@example.com"
+                    readOnly
+                    hint="Locked from your registration. Contact an admin to change it."
+                    error={bioForm.formState.errors.email?.message}
+                    {...bioForm.register("email", {
+                      required: "Email is required",
+                      maxLength: { value: EMAIL_MAX, message: "Email is too long" },
+                      pattern: { value: EMAIL_REGEX, message: "Enter a valid email address" },
+                    })}
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Input
@@ -391,42 +395,16 @@ export default function BioDataPage() {
             </h2>
             <div className="flex flex-col gap-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                <Select
-                  label="Blood Group"
-                  placeholder="Select blood group"
-                  error={bioForm.formState.errors.bloodGroup?.message}
-                  options={BLOOD_GROUPS.map((g) => ({ value: g, label: g }))}
-                  {...bioForm.register("bloodGroup", { required: "Blood group is required" })}
-                />
                 <div className="flex flex-col gap-1">
-                  <span className="text-sm font-medium text-[var(--text-heading)] font-[family-name:var(--font-heading)]">
-                    Display on ID card?
-                  </span>
-                  <div className="flex gap-2 mt-1">
-                    {[
-                      { value: true, label: "Yes" },
-                      { value: false, label: "No" },
-                    ].map((opt) => {
-                      const active = bioForm.watch("displayBloodGroupOnId") === opt.value;
-                      return (
-                        <button
-                          key={opt.label}
-                          type="button"
-                          aria-pressed={active}
-                          onClick={() => bioForm.setValue("displayBloodGroupOnId", opt.value)}
-                          className={`flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
-                            active
-                              ? "border-[var(--primary)] bg-[var(--primary-light)] text-[var(--primary)]"
-                              : "border-[var(--border-subtle)] bg-transparent text-[var(--text-body)] hover:bg-[var(--bg-base)]"
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <Select
+                    label="Blood Group"
+                    placeholder="Select blood group"
+                    error={bioForm.formState.errors.bloodGroup?.message}
+                    options={BLOOD_GROUPS.map((g) => ({ value: g, label: g }))}
+                    {...bioForm.register("bloodGroup", { required: "Blood group is required" })}
+                  />
                   <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                    Only shown on your ID card if you choose Yes.
+                    Your blood group will be shown on your ID card.
                   </p>
                 </div>
               </div>
