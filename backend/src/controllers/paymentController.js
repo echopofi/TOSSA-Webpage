@@ -2,25 +2,7 @@ const crypto = require('crypto');
 const prisma = require('../config/prisma');
 const config = require('../config');
 const paystack = require('../services/paystack');
-const { sendPaymentConfirmation, sendOtpCode, sendNewRegistrationAlert } = require('../services/email');
-const {
-  generateAccessToken,
-  generateRefreshToken,
-  hashToken,
-} = require('./authController');
-
-// In-memory per-reference cooldown for OTP requests. Keyed by payment reference
-// so a caller can't spam POST /request-otp to burn OTP-email credits or churn
-// codes. Stale entries (older than the cooldown) are pruned on each request so
-// the map never grows without bound.
-const otpRequestLog = new Map();
-
-function pruneOtpRequestLog(cooldownMs) {
-  const cutoff = Date.now() - cooldownMs;
-  for (const [ref, ts] of otpRequestLog) {
-    if (ts < cutoff) otpRequestLog.delete(ref);
-  }
-}
+const { sendPaymentConfirmation, sendNewRegistrationAlert } = require('../services/email');
 
 // Returns true when Paystack still holds a transaction for this reference (an
 // initialize that actually reached Paystack). false when it has no record — an
@@ -185,6 +167,9 @@ async function initiateRegistration(req, res) {
 }
 
 // GET /api/payments/verify/:reference
+// Fires exactly one admin registration-alert when the payment state changes.
+// On repeat verify calls (e.g. browser refresh) the alert is suppressed because
+// the stored payment.status already matches the new status.
 async function verifyPayment(req, res) {
   try {
     const { reference } = req.params;
@@ -201,14 +186,19 @@ async function verifyPayment(req, res) {
     const expectedAmount = payment.amount;
     if (tx.amount !== expectedAmount) {
       console.error(`Amount mismatch for ${reference}: expected ${expectedAmount}, got ${tx.amount}`);
+      const previousStatus = payment.status;
       await prisma.payment.update({
         where: { id: payment.id },
         data: { status: 'failed' },
       });
+      if (previousStatus !== 'failed') {
+        notifyAdminsOfRegistrationPayment(payment, 'failed', reference);
+      }
       return res.status(400).json({ error: 'Amount verification failed' });
     }
 
     const newStatus = tx.status === 'success' ? 'success' : tx.status === 'abandoned' ? 'abandoned' : 'failed';
+    const previousStatus = payment.status;
 
     await prisma.payment.update({
       where: { id: payment.id },
@@ -243,33 +233,46 @@ async function verifyPayment(req, res) {
       ).catch(() => {});
     }
 
-    // Keep the admin's registration alert in sync with the real payment state —
-    // report success/failed/abandoned honestly instead of a registration being
-    // assumed paid just because it exists.
-    const admin = await prisma.user.findFirst({
-      where: { role: 'admin' },
-      select: { email: true },
-    });
-    if (admin) {
-      const paymentMember = await prisma.member.findUnique({
-        where: { id: payment.memberId },
-        include: { user: { select: { fullName: true, email: true } } },
-      });
-      if (paymentMember) {
-        sendNewRegistrationAlert(admin.email, paymentMember.user, {
-          status: newStatus,
-          amount: payment.amount,
-          reference,
-          createdAt: payment.createdAt,
-          paidAt: newStatus === 'success' ? new Date() : null,
-        }).catch(() => {});
-      }
+    // Admin email: only on a genuine status transition (covers both verify and
+    // webhook calling this path after a Paystack callback).
+    if (previousStatus !== newStatus) {
+      notifyAdminsOfRegistrationPayment(payment, newStatus, reference);
     }
 
     res.json({ reference, status: newStatus, amount: tx.amount });
   } catch (err) {
     console.error('Verify payment error:', err);
     res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// Shared helper — fires a single admin email for a registration payment whose
+// status just changed. Imported by webhookController for the webhook success
+// path so the email fires exactly once regardless of whether the user returned
+// to the site or the webhook resolved first.
+async function notifyAdminsOfRegistrationPayment(payment, status, reference) {
+  try {
+    const admin = await prisma.user.findFirst({
+      where: { role: 'admin' },
+      select: { email: true },
+    });
+    if (!admin) return;
+
+    const member = await prisma.member.findUnique({
+      where: { id: payment.memberId },
+      include: { user: { select: { fullName: true, email: true } } },
+    });
+    if (!member) return;
+
+    sendNewRegistrationAlert(admin.email, member.user, {
+      status,
+      amount: payment.amount,
+      reference,
+      createdAt: payment.createdAt,
+      paidAt: status === 'success' ? new Date() : null,
+    }).catch(() => {});
+  } catch (err) {
+    console.error('notifyAdminsOfRegistrationPayment failed:', err.message);
   }
 }
 
@@ -303,170 +306,4 @@ async function paymentHistory(req, res) {
   }
 }
 
-// POST /api/payments/request-otp
-// Unauthenticated. Accepts a payment reference, verifies the payment is
-// successful, then generates + emails a 6-digit OTP to the member's email.
-// Enforced server-side cooldown per reference to prevent email spam.
-async function requestOtp(req, res) {
-  try {
-    const { reference } = req.body;
-    if (!reference || typeof reference !== 'string') {
-      return res.status(400).json({ error: 'reference is required' });
-    }
-
-    const cooldownMs = config.otp.resendCooldownSeconds * 1000;
-    pruneOtpRequestLog(cooldownMs);
-
-    const lastRequest = otpRequestLog.get(reference);
-    if (lastRequest && Date.now() - lastRequest < cooldownMs) {
-      const waitSec = Math.ceil((cooldownMs - (Date.now() - lastRequest)) / 1000);
-      return res.status(429).json({
-        error: `Please wait ${waitSec} second${waitSec !== 1 ? 's' : ''} before requesting another code`,
-      });
-    }
-
-    const payment = await prisma.payment.findFirst({
-      where: { paystackReference: reference },
-    });
-    if (!payment) {
-      return res.status(404).json({ error: 'Payment not found' });
-    }
-    if (payment.status !== 'success') {
-      return res.status(400).json({ error: 'Payment has not been completed' });
-    }
-
-    const member = await prisma.member.findUnique({ where: { id: payment.memberId } });
-    if (!member) {
-      return res.status(400).json({ error: 'Member not found' });
-    }
-
-    const user = await prisma.user.findUnique({ where: { id: member.userId } });
-    if (!user) {
-      return res.status(400).json({ error: 'User not found' });
-    }
-
-    // Invalidate any existing unused OTP for this user (only one active OTP at a time)
-    await prisma.otpToken.deleteMany({
-      where: { userId: user.id, usedAt: null },
-    });
-
-    const code = crypto.randomInt(100000, 1000000).toString();
-    const expiresAt = new Date(Date.now() + config.otp.expiryMinutes * 60 * 1000);
-
-    await prisma.otpToken.create({
-      data: {
-        userId: user.id,
-        code,
-        reference,
-        expiresAt,
-      },
-    });
-
-    otpRequestLog.set(reference, Date.now());
-
-    const emailResult = await sendOtpCode(
-      { email: user.email, fullName: user.fullName },
-      code,
-      config.otp.expiryMinutes,
-    );
-
-    if (!emailResult.success) {
-      console.error(`[otp] email delivery failed for ${reference} (${user.email}): ${emailResult.error}`);
-      // Still return success to the caller — the OTP row exists and they can
-      // verify the code manually if needed. The email failure is logged.
-    }
-
-    console.log(`[otp] code generated for ${reference} (user ${user.id}, expires ${expiresAt.toISOString()})`);
-    res.json({ message: 'OTP sent' });
-  } catch (err) {
-    console.error('requestOtp error:', err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-}
-
-// POST /api/payments/verify-otp
-// Unauthenticated. Accepts a payment reference + 6-digit code. On success,
-// issues an access token + refresh cookie identical to the normal login flow.
-async function verifyOtp(req, res) {
-  try {
-    const { reference, code } = req.body;
-    if (!reference || typeof reference !== 'string') {
-      return res.status(400).json({ error: 'reference is required' });
-    }
-    if (!code || typeof code !== 'string') {
-      return res.status(400).json({ error: 'code is required' });
-    }
-
-    const otp = await prisma.otpToken.findUnique({ where: { reference } });
-    if (!otp) {
-      return res.status(404).json({ error: 'No verification code found for this payment' });
-    }
-
-    if (otp.usedAt) {
-      return res.status(400).json({ error: 'Code already used. Please sign in with your password.' });
-    }
-
-    if (otp.expiresAt < new Date()) {
-      return res.status(400).json({ error: 'Code has expired. Please request a new one.' });
-    }
-
-    if (otp.attempts >= config.otp.maxAttempts) {
-      return res.status(400).json({ error: 'Too many failed attempts. Please request a new code.' });
-    }
-
-    if (otp.code !== code) {
-      await prisma.otpToken.update({
-        where: { id: otp.id },
-        data: { attempts: otp.attempts + 1 },
-      });
-      const remaining = config.otp.maxAttempts - otp.attempts - 1;
-      return res.status(401).json({
-        error: `Invalid code. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`,
-      });
-    }
-
-    // Mark used + issue tokens
-    await prisma.otpToken.update({
-      where: { id: otp.id },
-      data: { usedAt: new Date() },
-    });
-
-    const user = await prisma.user.findUnique({ where: { id: otp.userId } });
-    if (!user) {
-      return res.status(400).json({ error: 'User not found' });
-    }
-
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
-    const refreshHash = hashToken(refreshToken);
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
-    await prisma.refreshToken.create({
-      data: { userId: user.id, tokenHash: refreshHash, expiresAt },
-    });
-
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: config.nodeEnv === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
-    console.log(`[otp] verified for ${reference} (user ${user.id})`);
-    res.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        fullName: user.fullName,
-        role: user.role,
-        isVerified: user.isVerified,
-      },
-      accessToken,
-    });
-  } catch (err) {
-    console.error('verifyOtp error:', err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-}
-
-module.exports = { initiateRegistration, verifyPayment, paymentHistory, requestOtp, verifyOtp };
+module.exports = { initiateRegistration, verifyPayment, paymentHistory, notifyAdminsOfRegistrationPayment };

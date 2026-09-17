@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const prisma = require('../config/prisma');
 const config = require('../config');
 const { sendPaymentConfirmation } = require('../services/email');
+const { notifyAdminsOfRegistrationPayment } = require('./paymentController');
 
 function verifyWebhookSignature(body, signature) {
   const hash = crypto
@@ -47,6 +48,7 @@ async function handlePaystackWebhook(req, res) {
       if (!payment) {
         return res.status(200).json({ message: 'Payment not found' });
       }
+      const previousStatus = payment.status;
 
       // Verify amount
       if (data.amount !== payment.amount) {
@@ -63,6 +65,9 @@ async function handlePaystackWebhook(req, res) {
               metadata: data,
             },
           });
+        }
+        if (previousStatus !== 'failed') {
+          notifyAdminsOfRegistrationPayment(payment, 'failed', paystackRef);
         }
         return res.status(200).json({ message: 'Amount mismatch, recorded as failed' });
       }
@@ -83,6 +88,10 @@ async function handlePaystackWebhook(req, res) {
             metadata: data,
           },
         });
+      }
+
+      if (previousStatus !== 'success') {
+        notifyAdminsOfRegistrationPayment(payment, 'success', paystackRef);
       }
 
       await sendPaymentEmail(memberId, data.amount, paystackRef, 'registration');

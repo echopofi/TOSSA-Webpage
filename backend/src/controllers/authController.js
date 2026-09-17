@@ -5,7 +5,6 @@ const prisma = require('../config/prisma');
 const config = require('../config');
 const {
   sendRegistrationConfirmation,
-  sendNewRegistrationAlert,
 } = require('../services/email');
 
 // Mirror of the client-side rule in frontend/lib/validation.ts — the browser
@@ -143,25 +142,6 @@ async function register(req, res) {
     sendRegistrationConfirmation({ email: user.email, fullName: user.fullName }).catch(
       (err) => console.error('Registration-confirmation email call failed:', err && err.message)
     );
-
-    prisma.user
-      .findFirst({ where: { role: 'admin' }, select: { email: true } })
-      .then(async (admin) => {
-        if (!admin) {
-          console.warn('New-registration admin alert skipped: no admin account in DB');
-          return null;
-        }
-        const payment = await prisma.payment.findFirst({
-          where: { memberId: member.id },
-          orderBy: { createdAt: 'desc' },
-        });
-        return sendNewRegistrationAlert(
-          admin.email,
-          { email: user.email, fullName: user.fullName },
-          payment
-        );
-      })
-      .catch((err) => console.error('New-registration admin-alert email call failed:', err && err.message));
 
     res.status(201).json({
       user: {

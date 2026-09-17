@@ -104,20 +104,6 @@ async function sendRegistrationConfirmation(user) {
   });
 }
 
-async function sendOtpCode(user, code, expiryMinutes) {
-  return sendMail({
-    to: user.email,
-    subject: 'Your verification code',
-    html: `
-      <h2>Your verification code</h2>
-      <p>Hi ${user.fullName},</p>
-      <p>Use the code below to complete your registration. It expires in <strong>${expiryMinutes} minutes</strong>.</p>
-      <p style="font-size:32px;font-weight:700;letter-spacing:8px;text-align:center;margin:24px 0;background:#f4f4f5;padding:16px;border-radius:12px;">${code}</p>
-      <p>If you didn't request this code, you can safely ignore this email.</p>
-    `,
-  });
-}
-
 async function sendVerificationApproved(user) {
   const loginUrl = `${config.frontendUrl}/login`;
   return sendMail({
@@ -208,47 +194,38 @@ function formatDateTime(value) {
   });
 }
 
-// Sent to an admin when a new account registers and needs verification.
-// payment (optional) reflects the actual payment state at send time — a
-// registration without a completed payment is reported honestly rather than
-// implying success.
-async function sendNewRegistrationAlert(adminEmail, user, payment = null) {
-  let paymentBlock;
-  if (payment && payment.status) {
-    const statusLabel = PAYMENT_STATUS_LABELS[payment.status] || payment.status;
-    const attemptedAt = formatDateTime(payment.paidAt || payment.createdAt);
-    const reference = payment.reference || payment.paystackReference || '—';
-    paymentBlock = `
-      <h3>Payment details</h3>
-      <ul>
-        <li><strong>Payment status:</strong> ${statusLabel}</li>
-        <li><strong>Amount ${payment.status === 'success' ? 'paid' : 'attempted'}:</strong> ₦${(payment.amount / 100).toLocaleString('en-NG')}</li>
-        <li><strong>Payment reference:</strong> ${reference}</li>
-        <li><strong>Date/time of attempt:</strong> ${attemptedAt || '—'}</li>
-      </ul>`;
-  } else {
-    paymentBlock = `
-      <h3>Payment details</h3>
-      <ul>
-        <li><strong>Payment status:</strong> No payment yet</li>
-        <li><strong>Amount attempted:</strong> —</li>
-        <li><strong>Payment reference:</strong> —</li>
-        <li><strong>Date/time of attempt:</strong> —</li>
-      </ul>`;
-  }
+async function sendNewRegistrationAlert(adminEmail, user, payment) {
+  const statusLabel = PAYMENT_STATUS_LABELS[payment.status] || payment.status;
+  const attemptedAt = formatDateTime(payment.paidAt || payment.createdAt);
+  const reference = payment.reference || payment.paystackReference || '—';
+  const isSuccess = payment.status === 'success';
+
+  const subject = isSuccess
+    ? 'New registration awaiting verification'
+    : `Registration payment — ${statusLabel}`;
+
+  const actionBlock = isSuccess
+    ? '<p>Sign in to the admin panel to verify this account.</p>'
+    : `<p>The user's payment did not complete. They may retry from the platform.</p>`;
 
   return sendMail({
     to: adminEmail,
-    subject: 'New registration awaiting verification',
+    subject,
     html: `
       <h2>New member registration</h2>
-      <p>A new alumni account was created and needs verification:</p>
+      <p>A new alumni account has been created:</p>
       <ul>
         <li><strong>Name:</strong> ${user.fullName}</li>
         <li><strong>Email:</strong> ${user.email}</li>
       </ul>
-      ${paymentBlock}
-      <p>Sign in to the admin panel to verify this account.</p>
+      <h3>Payment details</h3>
+      <ul>
+        <li><strong>Payment status:</strong> ${statusLabel}</li>
+        <li><strong>Amount ${isSuccess ? 'paid' : 'attempted'}:</strong> ₦${(payment.amount / 100).toLocaleString('en-NG')}</li>
+        <li><strong>Payment reference:</strong> ${reference}</li>
+        <li><strong>Date/time of attempt:</strong> ${attemptedAt || '—'}</li>
+      </ul>
+      ${actionBlock}
     `,
   });
 }
@@ -256,7 +233,6 @@ async function sendNewRegistrationAlert(adminEmail, user, payment = null) {
 module.exports = {
   sendMail,
   sendRegistrationConfirmation,
-  sendOtpCode,
   sendVerificationApproved,
   sendRegistrationRejected,
   sendPaymentConfirmation,
