@@ -20,20 +20,18 @@ export default function ConstitutionPage() {
         </div>
       </Reveal>
 
-      <Reveal variants={fadeUp}>
-        <Card padding="none" className="overflow-hidden">
-          <div className="border-b border-[var(--border-subtle)] px-4 py-3 flex items-center">
-            <span className="text-sm font-medium text-[var(--text-heading)]">
-              {CONSTITUTION_TITLE}
-            </span>
-          </div>
-          <div className="p-4 md:p-6">
-            <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-[var(--text-body)]">
-              {CONSTITUTION_TEXT}
-            </pre>
-          </div>
-        </Card>
-      </Reveal>
+      <Card padding="none" className="overflow-hidden">
+        <div className="border-b border-[var(--border-subtle)] px-4 py-3 flex items-center bg-[var(--surface-card)]">
+          <span className="text-sm font-medium text-[var(--text-heading)]">
+            {CONSTITUTION_TITLE}
+          </span>
+        </div>
+        <div className="p-4 md:p-6 bg-[var(--surface-card)]">
+          <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-[var(--text-body)]">
+            {CONSTITUTION_TEXT}
+          </pre>
+        </div>
+      </Card>
     </div>
   );
 }
