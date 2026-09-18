@@ -8,6 +8,7 @@ import { Users, ArrowRight } from "lucide-react";
 import { apiGetSets } from "@/lib/api";
 import type { GraduationSet } from "@/lib/types";
 import { Reveal, Stagger, StaggerItem, sheenClass } from "@/lib/motion";
+import { SetsGridSkeleton } from "@/components/skeletons/PageSkeletons";
 
 export default function SetsPage() {
   const [sets, setSets]       = useState<GraduationSet[]>([]);
@@ -35,9 +36,7 @@ export default function SetsPage() {
         </Reveal>
 
         {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-          </div>
+          <SetsGridSkeleton cards={6} />
         ) : (
           <Stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {sets.map((set) => (
