@@ -25,6 +25,7 @@ import {
 } from "@/lib/api";
 import type { DuesSummary, DuesPayment, Payment, DuesCycleStatus } from "@/lib/types";
 import { formatNaira, formatDate } from "@/lib/utils";
+import { PaymentsSkeleton } from "@/components/skeletons/PageSkeletons";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -169,11 +170,7 @@ function PaymentsContent() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <PaymentsSkeleton />;
   }
 
   // Has member paid registration fee?
@@ -465,13 +462,7 @@ function PaymentsContent() {
 
 export default function PaymentsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center py-24">
-          <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-        </div>
-      }
-    >
+    <Suspense fallback={<PaymentsSkeleton />}>
       <PaymentsContent />
     </Suspense>
   );
