@@ -76,6 +76,7 @@ async function searchMembers(req, res) {
         OR: [
           { user: { fullName: { contains: q, mode: 'insensitive' } } },
           { user: { email: { contains: q, mode: 'insensitive' } } },
+          { membershipNumber: { contains: q, mode: 'insensitive' } },
         ],
       },
       include: {
@@ -91,6 +92,8 @@ async function searchMembers(req, res) {
         fullName: m.user.fullName,
         email: m.user.email,
         matricNumber: m.matricNumber,
+        membershipNumber: m.membershipNumber,
+        profileImage: m.profileImage,
         sets: m.setMembers.map((sm) => sm.set),
       })),
     });
