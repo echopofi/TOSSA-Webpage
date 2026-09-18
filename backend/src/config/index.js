@@ -20,6 +20,10 @@ module.exports = {
     apiSecret: process.env.CLOUDINARY_API_SECRET,
   },
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+  // Stopgap super-admin identity: the only account that can permanently delete
+  // a user. Role system only distinguishes member/admin today; this flag is
+  // swapped for a real DB flag once there is more than one admin to manage.
+  superAdminEmail: process.env.SUPER_ADMIN_EMAIL || 'echopofii@gmail.com',
   // Confirmed fee values (replacing placeholders):
   //   registration fee ₦1,000 one-time
   //   annual dues ₦2,000/yr and web-fee ₦1,000/yr are stored per-cycle on

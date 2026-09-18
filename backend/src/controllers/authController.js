@@ -176,7 +176,18 @@ async function login(req, res) {
       return res.status(400).json({ error: 'Invalid email address' });
     }
 
-    const user = await prisma.user.findUnique({ where: { email: cleanEmail } });
+    const user = await prisma.user.findUnique({
+      where: { email: cleanEmail },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        passwordHash: true,
+        role: true,
+        isVerified: true,
+        member: { select: { isActive: true } },
+      },
+    });
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -184,6 +195,12 @@ async function login(req, res) {
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
       return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Suspended members are told exactly why login failed — not given the
+    // generic invalid-credentials message.
+    if (user.member && user.member.isActive === false) {
+      return res.status(403).json({ error: 'Account suspended' });
     }
 
     const accessToken = generateAccessToken(user);
@@ -244,9 +261,15 @@ async function refresh(req, res) {
       data: { revoked: true },
     });
 
-    const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: { id: true, email: true, role: true, member: { select: { isActive: true } } },
+    });
     if (!user) {
       return res.status(401).json({ error: 'User not found' });
+    }
+    if (user.member && user.member.isActive === false) {
+      return res.status(403).json({ error: 'Account suspended' });
     }
 
     const accessToken = generateAccessToken(user);
@@ -355,40 +378,83 @@ async function me(req, res) {
 // out of scope; role changes are admin-only via the admin routes).
 const PROFILE_FIELDS = ['fullName', 'gender', 'phone', 'address', 'bio', 'profileImage', 'matricNumber'];
 
+// Shared by the self-update path (PATCH /api/auth/me) and the admin edit path
+// (PATCH /api/admin/members/:id) so a side channel can never bypass the same
+// validation. Returns { clean, error } — error is a plain status/message pair.
+function validateProfileBody(body) {
+  const clean = {};
+  for (const key of PROFILE_FIELDS) {
+    if (body[key] !== undefined) {
+      clean[key] = typeof body[key] === 'string' ? body[key].trim() : body[key];
+    }
+  }
+
+  if (clean.fullName !== undefined && (!clean.fullName || clean.fullName.length > NAME_MAX)) {
+    return { clean, error: { status: 400, message: 'Full name cannot be empty or too long' } };
+  }
+  if (clean.phone !== undefined && clean.phone.length > PHONE_MAX) {
+    return { clean, error: { status: 400, message: 'Phone number is too long' } };
+  }
+  if (clean.matricNumber !== undefined && clean.matricNumber.length > MATRIC_MAX) {
+    return { clean, error: { status: 400, message: 'Matric number is too long' } };
+  }
+  if (clean.address !== undefined && clean.address.length > 500) {
+    return { clean, error: { status: 400, message: 'Address is too long' } };
+  }
+  if (clean.bio !== undefined && clean.bio.length > 1000) {
+    return { clean, error: { status: 400, message: 'Bio is too long' } };
+  }
+  // A base64/data URL must never be persisted — photos are uploaded through
+  // the Cloudinary signed flow and the short secure_url is what gets saved.
+  if (clean.profileImage !== undefined && /^data:/i.test(clean.profileImage)) {
+    return { clean, error: { status: 400, message: 'Profile image must be an uploaded photo URL' } };
+  }
+  if (clean.profileImage !== undefined && clean.profileImage.length > 2000) {
+    return { clean, error: { status: 400, message: 'Profile image is too long' } };
+  }
+  if (clean.gender !== undefined && clean.gender.length > 20) {
+    return { clean, error: { status: 400, message: 'Gender is invalid' } };
+  }
+
+  return { clean, error: null };
+}
+
+async function applyProfileUpdates(userId, clean) {
+  if (clean.fullName !== undefined) {
+    await prisma.user.update({ where: { id: userId }, data: { fullName: clean.fullName } });
+  }
+
+  const memberPayload = {};
+  for (const key of ['gender', 'phone', 'address', 'bio', 'profileImage', 'matricNumber']) {
+    if (clean[key] !== undefined) memberPayload[key] = clean[key];
+  }
+
+  if (Object.keys(memberPayload).length > 0) {
+    await prisma.member.upsert({
+      where: { userId },
+      update: memberPayload,
+      create: { userId, ...memberPayload },
+    });
+  }
+
+  return prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      member: {
+        include: {
+          bioData: { select: { bloodGroup: true } },
+          setMembers: { include: { set: true } },
+        },
+      },
+    },
+  });
+}
+
 async function updateProfile(req, res) {
   try {
-    const clean = {};
-    for (const key of PROFILE_FIELDS) {
-      if (req.body[key] !== undefined) {
-        clean[key] = typeof req.body[key] === 'string' ? req.body[key].trim() : req.body[key];
-      }
-    }
-
-    if (clean.fullName !== undefined && (!clean.fullName || clean.fullName.length > NAME_MAX)) {
-      return res.status(400).json({ error: 'Full name cannot be empty or too long' });
-    }
-    if (clean.phone !== undefined && clean.phone.length > PHONE_MAX) {
-      return res.status(400).json({ error: 'Phone number is too long' });
-    }
-    if (clean.matricNumber !== undefined && clean.matricNumber.length > MATRIC_MAX) {
-      return res.status(400).json({ error: 'Matric number is too long' });
-    }
-    if (clean.address !== undefined && clean.address.length > 500) {
-      return res.status(400).json({ error: 'Address is too long' });
-    }
-    if (clean.bio !== undefined && clean.bio.length > 1000) {
-      return res.status(400).json({ error: 'Bio is too long' });
-    }
-    // A base64/data URL must never be persisted — photos are uploaded through
-    // the Cloudinary signed flow and the short secure_url is what gets saved.
-    if (clean.profileImage !== undefined && /^data:/i.test(clean.profileImage)) {
-      return res.status(400).json({ error: 'Profile image must be an uploaded photo URL' });
-    }
-    if (clean.profileImage !== undefined && clean.profileImage.length > 2000) {
-      return res.status(400).json({ error: 'Profile image is too long' });
-    }
-    if (clean.gender !== undefined && clean.gender.length > 20) {
-      return res.status(400).json({ error: 'Gender is invalid' });
+    const { clean, error } = validateProfileBody(req.body);
+    if (error) {
+      return res.status(error.status).json({ error: error.message });
     }
 
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });
@@ -396,37 +462,7 @@ async function updateProfile(req, res) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    if (clean.fullName !== undefined) {
-      await prisma.user.update({ where: { id: user.id }, data: { fullName: clean.fullName } });
-    }
-
-    const memberPayload = {};
-    for (const key of ['gender', 'phone', 'address', 'bio', 'profileImage', 'matricNumber']) {
-      if (clean[key] !== undefined) memberPayload[key] = clean[key];
-    }
-
-    let member = null;
-    if (Object.keys(memberPayload).length > 0) {
-      member = await prisma.member.upsert({
-        where: { userId: user.id },
-        update: memberPayload,
-        create: { userId: user.id, ...memberPayload },
-      });
-    } else if (user.member) {
-      member = user.member;
-    }
-
-    const updated = await prisma.user.findUnique({
-      where: { id: user.id },
-      include: {
-        member: {
-          include: {
-            bioData: { select: { bloodGroup: true } },
-            setMembers: { include: { set: true } },
-          },
-        },
-      },
-    });
+    const updated = await applyProfileUpdates(user.id, clean);
 
     res.json({
       user: {
@@ -503,4 +539,4 @@ async function changePassword(req, res) {
   }
 }
 
-module.exports = { register, login, refresh, logout, me, updateProfile, changePassword, generateAccessToken, generateRefreshToken, hashToken };
+module.exports = { register, login, refresh, logout, me, updateProfile, changePassword, generateAccessToken, generateRefreshToken, hashToken, validateProfileBody, applyProfileUpdates };
