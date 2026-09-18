@@ -18,7 +18,7 @@ interface MemberIdCardProps {
  * /dashboard/id-card can compose a flip interaction and screenshot each face.
  */
 
-export function MemberCardFront({ member }: { member: Member }) {
+export function MemberCardFront({ member, membershipNumber }: MemberIdCardProps) {
   const initialsText = member.full_name
     .split(" ")
     .filter(Boolean)
@@ -26,6 +26,8 @@ export function MemberCardFront({ member }: { member: Member }) {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+
+  const memNumber = membershipNumber ?? member.membership_number ?? "—";
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-gradient-to-br from-[var(--primary)] to-[#1d4ed8] text-white shadow-lg">
@@ -79,6 +81,10 @@ export function MemberCardFront({ member }: { member: Member }) {
                 </span>
               )}
             </div>
+            <p className="text-xs text-white/80 mt-1.5">
+              No.{" "}
+              <span className="font-mono font-semibold text-white tracking-wide">{memNumber}</span>
+            </p>
           </div>
         </div>
       </div>
@@ -131,7 +137,7 @@ export function MemberCardBack({ member, membershipNumber }: MemberIdCardProps) 
 export default function MemberIdCard({ member, membershipNumber }: MemberIdCardProps) {
   return (
     <div className="w-full max-w-xs md:max-w-sm flex flex-col gap-3">
-      <MemberCardFront member={member} />
+      <MemberCardFront member={member} membershipNumber={membershipNumber} />
       <MemberCardBack member={member} membershipNumber={membershipNumber} />
       <p className="text-[11px] text-[var(--text-muted)] text-center">
         Keep this card safe. It is your digital proof of membership.
