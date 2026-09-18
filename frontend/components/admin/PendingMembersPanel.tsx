@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import { UserCheck, UserX, Users, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { UserCheck, UserX, Users, AlertTriangle, CheckCircle2, Search } from "lucide-react";
 import {
   apiAdminListPendingMembers,
   apiAdminApproveMember,
@@ -21,6 +21,18 @@ export default function PendingMembersPanel() {
   const [notice, setNotice]         = useState("");
   const [rejectTarget, setRejectTarget] = useState<PendingMember | null>(null);
   const [rejecting, setRejecting]   = useState(false);
+  const [filter, setFilter]         = useState("");
+
+  const filtered = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    if (!q) return pending;
+    return pending.filter(
+      (m) =>
+        m.full_name?.toLowerCase().includes(q) ||
+        m.email?.toLowerCase().includes(q) ||
+        m.set?.toLowerCase().includes(q)
+    );
+  }, [pending, filter]);
 
   useEffect(() => {
     (async () => {
@@ -90,6 +102,23 @@ export default function PendingMembersPanel() {
           </div>
         )}
 
+        {!loading && pending.length > 0 && (
+          <div className="px-5 pt-4">
+            <div className="relative">
+              <Search
+                size={15}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none"
+              />
+              <input
+                className="input pl-9"
+                placeholder="Filter by name, email, or set…"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <PanelRowsSkeleton rows={3} />
         ) : pending.length === 0 ? (
@@ -98,7 +127,12 @@ export default function PendingMembersPanel() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            {filtered.length === 0 ? (
+              <div className="px-5 py-10 text-center text-sm text-[var(--text-muted)]">
+                No registrations match &quot;{filter}&quot;.
+              </div>
+            ) : (
+              <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--border-subtle)]">
                   {["Registrant", "Set", "Registered", ""].map((h) => (
@@ -112,7 +146,7 @@ export default function PendingMembersPanel() {
                 </tr>
               </thead>
               <tbody>
-                {pending.map((m) => (
+                {filtered.map((m) => (
                   <tr
                     key={m.id}
                     className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-[var(--bg-base)] transition-colors"
@@ -165,7 +199,8 @@ export default function PendingMembersPanel() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            )}
           </div>
         )}
       </Card>
