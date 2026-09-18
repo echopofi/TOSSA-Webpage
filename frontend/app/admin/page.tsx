@@ -39,6 +39,7 @@ import ElectionReviewPanel from "@/components/admin/ElectionReviewPanel";
 import ExcoAssignmentPanel from "@/components/admin/ExcoAssignmentPanel";
 import PendingMembersPanel from "@/components/admin/PendingMembersPanel";
 import NationalExcoStrip from "@/components/exco/NationalExcoStrip";
+import { AdminSkeleton } from "@/components/skeletons/PageSkeletons";
 
 // ─── Form shape ───────────────────────────────────────────────────────────────
 
@@ -230,11 +231,7 @@ export default function AdminPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <AdminSkeleton />;
   }
 
   const setOptions = sets.map((s) => ({
