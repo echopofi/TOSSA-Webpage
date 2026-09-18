@@ -28,6 +28,7 @@ import MemberIdCard from "@/components/id/MemberIdCard";
 import BioDataBanner from "@/components/bio/BioDataBanner";
 import NationalExcoStrip from "@/components/exco/NationalExcoStrip";
 import PendingVerificationScreen from "@/components/pending/PendingVerificationScreen";
+import { DashboardSkeleton } from "@/components/skeletons/PageSkeletons";
 
 export default function DashboardPage() {
   const [member, setMember]               = useState<Member | null>(null);
@@ -73,11 +74,7 @@ export default function DashboardPage() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (!verified) {

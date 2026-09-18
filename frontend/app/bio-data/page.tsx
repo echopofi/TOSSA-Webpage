@@ -32,6 +32,7 @@ import type {
   OccupationCategory,
 } from "@/lib/types";
 import { Reveal, fadeUp } from "@/lib/motion";
+import { BioDataSkeleton } from "@/components/skeletons/PageSkeletons";
 
 interface BioDataForm {
   fullName: string;
@@ -230,11 +231,7 @@ export default function BioDataPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <BioDataSkeleton />;
   }
 
   return (

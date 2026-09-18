@@ -7,6 +7,7 @@ import Button from "@/components/ui/Button";
 import { MemberCardFront, MemberCardBack } from "@/components/id/MemberIdCard";
 import { loadMember } from "@/lib/api";
 import type { Member } from "@/lib/types";
+import { IdCardSkeleton } from "@/components/skeletons/PageSkeletons";
 
 type CardFace = "front" | "back";
 
@@ -95,11 +96,7 @@ export default function IdCardPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <IdCardSkeleton />;
   }
 
   return (

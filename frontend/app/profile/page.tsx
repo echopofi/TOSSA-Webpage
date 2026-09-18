@@ -36,6 +36,7 @@ import { initials, formatDate } from "@/lib/utils";
 import type { Member, BioData } from "@/lib/types";
 import { PASSWORD_MAX } from "@/lib/validation";
 import { Reveal, Stagger, StaggerItem, fadeUp } from "@/lib/motion";
+import { ProfileSkeleton } from "@/components/skeletons/PageSkeletons";
 
 interface ProfileForm {
   address: string;
@@ -211,11 +212,7 @@ export default function ProfilePage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   if (!member) return null;
