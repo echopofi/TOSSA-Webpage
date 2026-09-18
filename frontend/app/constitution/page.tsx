@@ -1,10 +1,9 @@
 "use client";
 
-import { FileText, ScrollText } from "lucide-react";
+import { ScrollText } from "lucide-react";
 import Card from "@/components/ui/Card";
 import { Reveal, fadeUp } from "@/lib/motion";
-
-const PDF_URL = "/assets/constitution.pdf";
+import { CONSTITUTION_TITLE, CONSTITUTION_TEXT } from "@/lib/constitutionContent";
 
 export default function ConstitutionPage() {
   return (
@@ -23,16 +22,16 @@ export default function ConstitutionPage() {
 
       <Reveal variants={fadeUp}>
         <Card padding="none" className="overflow-hidden">
-          <div className="border-b border-[var(--border-subtle)] px-4 py-3 flex items-center gap-2">
-            <FileText size={16} className="text-[var(--primary)]" />
-            <span className="text-sm font-medium text-[var(--text-heading)]">Document preview</span>
+          <div className="border-b border-[var(--border-subtle)] px-4 py-3 flex items-center">
+            <span className="text-sm font-medium text-[var(--text-heading)]">
+              {CONSTITUTION_TITLE}
+            </span>
           </div>
-          <iframe
-            src={PDF_URL}
-            title="TSSOSA Constitution"
-            className="w-full h-[70vh] min-h-[480px] bg-white"
-            onContextMenu={(e) => e.preventDefault()}
-          />
+          <div className="p-4 md:p-6">
+            <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-[var(--text-body)]">
+              {CONSTITUTION_TEXT}
+            </pre>
+          </div>
         </Card>
       </Reveal>
     </div>
