@@ -23,6 +23,7 @@ import {
 } from "@/lib/api";
 import type { ElectionPosition, ElectionApplication } from "@/lib/types";
 import { formatNaira } from "@/lib/utils";
+import { ElectionsSkeleton } from "@/components/skeletons/PageSkeletons";
 
 function appStatusToPill(status: ElectionApplication["status"]): "paid" | "pending" | "overdue" {
   if (status === "approved" || status === "submitted") return "paid";
@@ -203,11 +204,7 @@ function ElectionsContent() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <ElectionsSkeleton />;
   }
 
   return (
@@ -342,13 +339,7 @@ function ElectionsContent() {
 
 export default function ElectionsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center py-24">
-          <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-        </div>
-      }
-    >
+    <Suspense fallback={<ElectionsSkeleton />}>
       <ElectionsContent />
     </Suspense>
   );
