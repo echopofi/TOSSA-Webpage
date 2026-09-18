@@ -13,6 +13,7 @@ import { initials } from "@/lib/utils";
 import { use } from "react";
 import { motion } from "framer-motion";
 import { Reveal, Stagger, StaggerItem, fadeUp } from "@/lib/motion";
+import { SetDetailSkeleton } from "@/components/skeletons/PageSkeletons";
 
 export default function SetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -35,15 +36,7 @@ export default function SetPage({ params }: { params: Promise<{ id: string }> })
   }, [id]);
 
   if (loading) {
-    return (
-      <>
-        <Navbar variant="public" />
-        <div className="flex items-center justify-center py-32">
-          <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-        </div>
-        <Footer />
-      </>
-    );
+    return <SetDetailSkeleton />;
   }
 
   if (!set) return null;
