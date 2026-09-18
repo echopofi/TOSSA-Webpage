@@ -563,7 +563,7 @@ function AuthCard() {
           left: -250%;
           width: 300%;
           height: 100%;
-          background: var(--primary);
+          background: radial-gradient(ellipse 75% 65% at 75% 40%, rgba(168, 85, 247, 0.45) 0%, rgba(88, 61, 161, 0.3) 45%, transparent 80%), radial-gradient(ellipse 45% 45% at 80% 30%, rgba(217, 119, 236, 0.3) 0%, transparent 65%), #1E1238;
           border-radius: 150px;
           z-index: 2;
           transition: 1.8s ease-in-out;

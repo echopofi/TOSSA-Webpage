@@ -16,13 +16,13 @@ export default function HomePage() {
 
       <main>
         {/* ── Hero ──────────────────────────────────────────────────────────── */}
-        <section className="relative overflow-hidden bg-[var(--text-heading)] text-white">
-          {/* Background gradient overlay */}
+        <section className="relative overflow-hidden bg-[#1E1238] text-white">
+          {/* Soft center-right radial purple/magenta burst glow */}
           <div
-            className="absolute inset-0 opacity-20"
+            className="absolute inset-0 pointer-events-none"
             style={{
               background:
-                "radial-gradient(ellipse at 70% 50%, var(--primary) 0%, transparent 60%)",
+                "radial-gradient(ellipse 75% 65% at 75% 40%, rgba(168, 85, 247, 0.45) 0%, rgba(88, 61, 161, 0.3) 45%, transparent 80%), radial-gradient(ellipse 45% 45% at 80% 30%, rgba(217, 119, 236, 0.3) 0%, transparent 65%)",
             }}
           />
           <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-20 md:py-28 lg:py-32">
