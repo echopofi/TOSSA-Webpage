@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSyncExternalStore } from "react";
 import { subscribeAuth, getCurrentUserSnapshot } from "@/lib/session";
+import { GuardSkeleton } from "@/components/skeletons/PageSkeletons";
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -63,11 +64,7 @@ export default function AuthGuard({ children, requireAdmin = false }: AuthGuardP
   const denied = user === null || (requireAdmin && user.role !== "admin");
 
   if (denied) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <GuardSkeleton />;
   }
 
   return <>{children}</>;

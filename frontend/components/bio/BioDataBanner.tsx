@@ -7,6 +7,7 @@ import Button from "@/components/ui/Button";
 import { ClipboardList, ArrowRight, CheckCircle2, PencilLine } from "lucide-react";
 import { apiGetBioData } from "@/lib/api";
 import { hasBioDataDraft } from "@/lib/bioDataDraft";
+import { BioBannerSkeleton } from "@/components/skeletons/PageSkeletons";
 
 type BioDataStatus = "loading" | "not_started" | "in_progress" | "submitted";
 
@@ -38,7 +39,7 @@ export default function BioDataBanner() {
     })();
   }, []);
 
-  if (status === "loading") return null;
+  if (status === "loading") return <BioBannerSkeleton />;
 
   if (status === "submitted") {
     return (

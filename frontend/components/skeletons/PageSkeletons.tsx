@@ -864,6 +864,47 @@ export function SetManageSkeleton() {
   );
 }
 
+// ─── Auth guard (brief session/hydration check on every protected route) ─────
+
+/** Lightweight page shell shown while the route guard confirms a session. */
+export function GuardSkeleton() {
+  return (
+    <div className="min-h-screen flex flex-col gap-8" aria-hidden="true">
+      <div className="flex items-center justify-between py-5 border-b border-[var(--border-subtle)]">
+        <div className="flex items-center gap-2">
+          <Skeleton className="w-9 h-9 rounded-lg" />
+          <SkText className="w-24" />
+        </div>
+        <SkPill className="w-24" />
+      </div>
+      <div className="px-6 flex flex-col gap-8">
+        <HeaderSkeleton titleW="w-52 h-7" subW="w-72" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <div className="flex flex-col gap-2.5">
+              <SkText className="w-24" />
+              <SkTitle className="w-28 h-6" />
+            </div>
+          </Card>
+          <Card>
+            <div className="flex flex-col gap-2.5">
+              <SkText className="w-24" />
+              <SkTitle className="w-28 h-6" />
+            </div>
+          </Card>
+          <Card>
+            <div className="flex flex-col gap-2.5">
+              <SkText className="w-24" />
+              <SkTitle className="w-28 h-6" />
+            </div>
+          </Card>
+        </div>
+        <TableSkeleton rows={4} />
+      </div>
+    </div>
+  );
+}
+
 // ─── Dashboard / home strip placeholders ─────────────────────────────────────
 
 /** Bio Data banner on the dashboard. */

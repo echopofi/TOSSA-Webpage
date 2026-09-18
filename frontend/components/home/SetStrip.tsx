@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowRight, ChevronLeft, ChevronRight, GraduationCap, Users } from "lucide-react";
 import type { GraduationSet } from "@/lib/types";
 import { apiGetSets } from "@/lib/api";
+import { SetStripSkeleton } from "@/components/skeletons/PageSkeletons";
 
 type SetStripProps = { sets?: GraduationSet[] };
 
@@ -86,6 +87,10 @@ export default function SetStrip({ sets: staticSets }: SetStripProps) {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [index, ready, paused, pickRandom]);
+
+  // While the live feed is still loading, show a matching shape instead of a
+  // blank gap. On fetch failure / no sets we still render nothing (as before).
+  if (!fanned) return <SetStripSkeleton />;
 
   if (!ready) return null;
 
