@@ -21,6 +21,7 @@ import { apiGetMember, apiGetMilestones } from "@/lib/api";
 import type { Member, AutoMilestone, AnyMilestone } from "@/lib/types";
 import { formatDate, initials } from "@/lib/utils";
 import { use } from "react";
+import { MemberPageSkeleton } from "@/components/skeletons/PageSkeletons";
 
 // ─── Auto-generate default timeline when member has no saved milestones ───────
 
@@ -134,15 +135,7 @@ export default function MemberProfilePage({
   }, [id]);
 
   if (loading) {
-    return (
-      <>
-        <Navbar variant="public" />
-        <div className="flex items-center justify-center py-32">
-          <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-        </div>
-        <Footer />
-      </>
-    );
+    return <MemberPageSkeleton />;
   }
 
   if (error) {
