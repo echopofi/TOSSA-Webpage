@@ -16,7 +16,7 @@ export default function AboutPage() {
             className="absolute inset-0 opacity-20"
             style={{
               background:
-                "radial-gradient(ellipse at 70% 50%, #7C6FD1 0%, transparent 60%)",
+                "radial-gradient(ellipse at 70% 50%, var(--primary) 0%, transparent 60%)",
             }}
           />
           <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-20 md:py-28 lg:py-32 text-center">
@@ -26,8 +26,7 @@ export default function AboutPage() {
                 Coming Soon
               </span>
               <h1
-                className="text-4xl md:text-5xl font-[family-name:var(--font-heading)] font-semibold leading-[1.1] mb-6"
-                style={{ color: "#141727" }}
+                className="text-4xl md:text-5xl font-[family-name:var(--font-heading)] font-semibold leading-[1.1] mb-6 text-white"
               >
                 About TCNN Alumni
                 <br />

@@ -3,24 +3,39 @@
 
 /* ── Design Tokens ─────────────────────────────────────────── */
 :root {
-  --bg-base:        #EDE9F7;
+  --bg-base:        #F4F0FB;
   --surface-card:   #FFFFFF;
-  --primary:        #7C6FD1;
-  --primary-hover:  #6558BE;
-  --primary-light:  #F0EDFC;
-  --text-heading:   #4f4d68;
-  --text-body:      #3D3A4A;
-  --text-muted:     #8E89A8;
-  --success:        #22C55E;
+  --primary:        #583DA1;
+  --primary-hover:  #432B80;
+  --primary-light:  #EFE9FA;
+  --text-heading:   #2D1C4D;
+  --text-body:      #2D2938;
+  --text-muted:     #6B637B;
+  --success:        #16A34A;
   --success-bg:     #DCFCE7;
-  --warning:        #F59E0B;
+  --warning:        #D97706;
   --warning-bg:     #FEF3C7;
-  --danger:         #EF4444;
+  --danger:         #DC2626;
   --danger-bg:      #FEE2E2;
-  --border-subtle:  #DDD8F0;
-  --shadow-card:    0 1px 4px 0 rgba(44, 36, 80, 0.08), 0 4px 16px 0 rgba(44, 36, 80, 0.05);
+  --border-subtle:  #E3DCF0;
+  --shadow-card:    0 2px 8px 0 rgba(45, 28, 77, 0.06), 0 8px 24px 0 rgba(45, 28, 77, 0.04);
   --radius-card:    12px;
-  --custom-red: #5b1919;
+  --custom-red:     #7F1D1D;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-base:        #161026;
+    --surface-card:   #221A38;
+    --primary:        #8B70F0;
+    --primary-hover:  #A18BF7;
+    --primary-light:  #2D234A;
+    --text-heading:   #F3EFFF;
+    --text-body:      #E2DDF0;
+    --text-muted:     #A499C2;
+    --border-subtle:  #362C54;
+    --shadow-card:    0 2px 8px 0 rgba(0, 0, 0, 0.3), 0 8px 24px 0 rgba(0, 0, 0, 0.2);
+  }
 }
 
 /* ── Base ───────────────────────────────────────────────────── */

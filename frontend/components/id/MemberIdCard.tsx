@@ -30,7 +30,7 @@ export function MemberCardFront({ member, membershipNumber }: MemberIdCardProps)
   const memNumber = membershipNumber ?? member.membership_number ?? "—";
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-gradient-to-br from-[var(--primary)] to-[#1d4ed8] text-white shadow-lg">
+    <div className="relative overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-gradient-to-br from-[var(--primary)] to-[var(--primary-hover)] text-white shadow-lg">
       <div className="absolute -right-8 -top-10 w-40 h-40 rounded-full bg-white/10" />
       <div className="absolute -left-6 -bottom-12 w-36 h-36 rounded-full bg-white/10" />
 
