@@ -1,12 +1,10 @@
 "use client";
 
-import { Download, FileText, ScrollText } from "lucide-react";
-import Button from "@/components/ui/Button";
+import { FileText, ScrollText } from "lucide-react";
 import Card from "@/components/ui/Card";
 import { Reveal, fadeUp } from "@/lib/motion";
 
 const PDF_URL = "/assets/constitution.pdf";
-const DOCX_URL = "/assets/CONSTITUTION%20TSSOSA%20REAL%20COPY_103849%20(1).docx";
 
 export default function ConstitutionPage() {
   return (
@@ -18,25 +16,8 @@ export default function ConstitutionPage() {
             TSSOSA Constitution
           </h1>
           <p className="text-[var(--text-muted)] text-sm mt-1">
-            The official constitution of the TSSOSA Alumni Association. Read it below or download a copy.
+            The official constitution of the TSSOSA Alumni Association. View it below.
           </p>
-        </div>
-      </Reveal>
-
-      <Reveal variants={fadeUp}>
-        <div className="flex flex-wrap gap-3">
-          <a href={PDF_URL} download="TSSOSA-Constitution.pdf">
-            <Button>
-              <Download size={16} />
-              Download PDF
-            </Button>
-          </a>
-          <a href={DOCX_URL} download>
-            <Button variant="outline">
-              <FileText size={16} />
-              Download Word (.docx)
-            </Button>
-          </a>
         </div>
       </Reveal>
 
@@ -50,13 +31,10 @@ export default function ConstitutionPage() {
             src={PDF_URL}
             title="TSSOSA Constitution"
             className="w-full h-[70vh] min-h-[480px] bg-white"
+            onContextMenu={(e) => e.preventDefault()}
           />
         </Card>
       </Reveal>
-
-      <p className="text-xs text-[var(--text-muted)]">
-        If the preview doesn&apos;t load on your device, use the download buttons above.
-      </p>
     </div>
   );
 }
