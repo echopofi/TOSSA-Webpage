@@ -6,7 +6,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import StatusPill from "@/components/ui/StatusPill";
 import Card from "@/components/ui/Card";
-import { Users, MessageSquare, ExternalLink, MapPin, User } from "lucide-react";
+import { Users, Send, MapPin, User } from "lucide-react";
 import { apiGetSet, apiGetMembers } from "@/lib/api";
 import type { GraduationSet, Member } from "@/lib/types";
 import { initials } from "@/lib/utils";
@@ -217,32 +217,29 @@ export default function SetPage({ params }: { params: Promise<{ id: string }> })
 
           {/* Sidebar */}
           <Stagger className="flex flex-col gap-5">
-            {/* WhatsApp CTA — group_invite_link per spec v2 (was whatsapp_link) */}
-            {set.group_invite_link && (
-              <StaggerItem>
-                <Card className="text-center flex flex-col items-center gap-4 p-6 bg-[#25D366] border-0 text-white">
-                  <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center">
-                    <MessageSquare size={24} />
-                  </div>
-                  <div>
-                    <h3 className="font-[family-name:var(--font-heading)] font-semibold text-base">
-                      Join the WhatsApp Group
-                    </h3>
-                    <p className="text-white/75 text-xs mt-1">
-                      Connect with Class of {set.set_name} in real time.
-                    </p>
-                  </div>
-                  <a
-                    href={set.group_invite_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full bg-white text-[#128C7E] font-[family-name:var(--font-heading)] font-semibold text-sm py-2.5 rounded-lg hover:bg-white/90 transition-colors flex items-center justify-center gap-1.5"
-                  >
-                    Open Group <ExternalLink size={14} />
-                  </a>
-                </Card>
-              </StaggerItem>
-            )}
+            {/* Community CTA — Telegram group coming soon (was WhatsApp open-in-browser per spec v2) */}
+            <StaggerItem>
+              <Card className="text-center flex flex-col items-center gap-4 p-6 bg-[#229ED9] border-0 text-white">
+                <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center">
+                  <Send size={24} />
+                </div>
+                <div>
+                  <h3 className="font-[family-name:var(--font-heading)] font-semibold text-base">
+                    Join the Telegram Community
+                  </h3>
+                  <p className="text-white/75 text-xs mt-1">
+                    Connect with Class of {set.set_name} in real time.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled
+                  className="w-full cursor-not-allowed bg-white text-[#176B94] font-[family-name:var(--font-heading)] font-semibold text-sm py-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                >
+                  Coming Soon
+                </button>
+              </Card>
+            </StaggerItem>
 
             {/* Set stats */}
             <StaggerItem>
