@@ -13,6 +13,7 @@ import { MOCK_SETS } from "@/lib/mockData";
 import type { GraduationSet } from "@/lib/types";
 import { EMAIL_REGEX, EMAIL_MAX, NAME_MAX, PASSWORD_MAX } from "@/lib/validation";
 import { motion } from "framer-motion";
+import { LoginSkeleton } from "@/components/skeletons/PageSkeletons";
 
 interface LoginForm {
   email: string;
@@ -633,13 +634,7 @@ function AuthCard() {
 
 export default function LoginPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center py-24">
-          <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-        </div>
-      }
-    >
+    <Suspense fallback={<LoginSkeleton />}>
       <AuthCard />
     </Suspense>
   );

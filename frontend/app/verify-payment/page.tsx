@@ -7,6 +7,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { apiVerifyRegistration, ApiRequestError } from "@/lib/api";
+import { VerifyPaymentSkeleton } from "@/components/skeletons/PageSkeletons";
 
 type State = "verifying" | "success" | "not_paid" | "error";
 
@@ -136,13 +137,7 @@ function VerifyPaymentContent() {
 
 export default function VerifyPaymentPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center py-24">
-          <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-        </div>
-      }
-    >
+    <Suspense fallback={<VerifyPaymentSkeleton />}>
       <VerifyPaymentContent />
     </Suspense>
   );
