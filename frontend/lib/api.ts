@@ -813,17 +813,60 @@ export async function apiGetMember(id: string): Promise<ApiSuccess<Member>> {
 
 /**
  * GET /api/members/search?q=
- * Admin only — powers individual announcement targeting.
+ * Admin only — powers member search across admin UIs (targeting, exco
+ * assignment, global admin search). Matches name, email, and membership
+ * number. Falls back to a local mock only when there's no backend session.
  */
 export async function apiSearchMembers(
   q: string
 ): Promise<ApiSuccess<Member[]>> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (apiUrl && getAccessToken()) {
+    const res = await authedFetch(`/api/members/search?q=${encodeURIComponent(q)}`);
+    const json = (await res.json()) as
+      | {
+          members?: Array<{
+            id?: string;
+            fullName?: string;
+            email?: string | null;
+            matricNumber?: string | null;
+            membershipNumber?: string | null;
+            profileImage?: string | null;
+            sets?: Array<{ id: string; setName: string }>;
+          }>;
+        }
+      | undefined;
+    const raw = Array.isArray(json?.members) ? json.members : [];
+    const firstSet = (sets: Array<{ id: string; setName: string }> | undefined) => sets?.[0];
+    return ok(
+      raw
+        .map((m) => {
+          const set = firstSet(m.sets);
+          return {
+            id: m.id ?? "",
+            user_id: "",
+            full_name: m.fullName ?? "",
+            email: m.email ?? undefined,
+            matric_number: m.matricNumber ?? undefined,
+            membership_number: m.membershipNumber ?? undefined,
+            profile_image: m.profileImage ?? undefined,
+            is_active: true,
+            joined_at: new Date().toISOString(),
+            set_id: set?.id,
+            set_name: set?.setName,
+          } satisfies Member;
+        })
+    );
+  }
+
+  // No-backend fallback: best-effort match over mock members.
   await delay(300);
   const lower = q.toLowerCase();
   const results = MOCK_MEMBERS.filter(
     (m) =>
       m.full_name.toLowerCase().includes(lower) ||
-      (m.email ?? "").toLowerCase().includes(lower)
+      (m.email ?? "").toLowerCase().includes(lower) ||
+      (m.membership_number ?? "").toLowerCase().includes(lower)
   );
   return ok(results);
 }
