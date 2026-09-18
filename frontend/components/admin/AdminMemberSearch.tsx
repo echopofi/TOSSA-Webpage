@@ -16,7 +16,7 @@ interface AdminMemberSearchProps {
 /**
  * Admin-global member search. Toggles a debounced live-search overlay that
  * queries GET /api/members/search?q= (name / email / membership number) and
- * links each result to the member's public profile page.
+ * links each result to the admin user-management view for that member.
  *
  * Used from the admin shell (Sidebar on desktop, Navbar on mobile) and made
  * available to admin panels — the single shared search component.
@@ -146,7 +146,7 @@ export default function AdminMemberSearch({
               results.map((m) => (
                 <Link
                   key={m.id}
-                  href={`/members/${m.id}`}
+                  href={`/admin/users/${m.id}`}
                   onClick={() => {
                     setOpen(false);
                     setQuery("");

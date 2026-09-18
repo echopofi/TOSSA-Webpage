@@ -393,6 +393,74 @@ export interface BioDataPayload {
   dataPrivacyConsent: boolean;
 }
 
+// ─── Admin user management ────────────────────────────────────────────────────
+
+/**
+ * Full read-only snapshot behind GET /api/admin/members/:id + the shape returned
+ * by the suspend/unsuspend endpoints.
+ */
+export interface AdminMemberDetail {
+  user: {
+    id: string;
+    fullName: string;
+    email: string;
+    role: string;
+    isVerified: boolean;
+    createdAt: string;
+  };
+  member: {
+    id: string;
+    membershipNumber?: string | null;
+    matricNumber?: string | null;
+    gender?: string | null;
+    phone?: string | null;
+    address?: string | null;
+    bio?: string | null;
+    profileImage?: string | null;
+    isActive: boolean;
+    joinedAt: string;
+  };
+  bioData?: {
+    fullName: string;
+    formerNickname?: string | null;
+    gender: string;
+    setYear: number;
+    phone: string;
+    email: string;
+    city: string;
+    state: string;
+    country: string;
+    bloodGroup: string;
+    occupationCategory: string;
+    specialization: string;
+    membershipDeclaration: boolean;
+    dataPrivacyConsent: boolean;
+    updatedAt: string;
+  } | null;
+  sets: Array<{
+    id: string;
+    name: string;
+    active: boolean;
+    joinedAt: string;
+  }>;
+  payments: Array<{
+    id: string;
+    amount: number;
+    status: string;
+    reference?: string | null;
+    createdAt: string;
+  }>;
+  duesPayments: Array<{
+    id: string;
+    cycle?: string | null;
+    amount: number;
+    status: string;
+    createdAt: string;
+    paidAt?: string | null;
+  }>;
+  activeSessions: number;
+}
+
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
 export interface PaginatedResponse<T> {

@@ -52,3 +52,17 @@ export function duesStatusToPill(
 export function initials(first: string, last: string): string {
   return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
 }
+
+// Stopgap super-admin identity — mirrors the backend constant
+// (backend/src/config/index.js → superAdminEmail). The role system only
+// distinguishes member/admin today; this flag is swapped for a real DB flag
+// once there is more than one admin to manage.
+export const SUPER_ADMIN_EMAIL = "echopofii@gmail.com";
+
+/** Super Admin = an admin whose email matches the configured super-admin address. */
+export function isSuperAdmin(user?: {
+  email?: string | null;
+  role?: string | null;
+} | null): boolean {
+  return user?.role === "admin" && user?.email?.toLowerCase() === SUPER_ADMIN_EMAIL;
+}

@@ -54,6 +54,7 @@ import type {
   PendingMember,
   BioData,
   BioDataPayload,
+  AdminMemberDetail,
 } from "@/lib/types";
 
 import {
@@ -125,6 +126,13 @@ export async function authedFetch(path: string, init: RequestInit = {}): Promise
       message = typeof body?.error === "string" ? body.error : message;
     } catch {
       /* non-JSON error body — keep default */
+    }
+    // A suspended account is rejected on every authenticated request (mid-session)
+    // as well as at login. The access token still looks valid, but the account is
+    // no longer permitted to act — so the session is force-expired immediately.
+    if (res.status === 403 && message === "Account suspended") {
+      expireSession();
+      throw new ApiRequestError(403, "Account suspended");
     }
     throw new ApiRequestError(res.status, message);
   }
@@ -1580,6 +1588,107 @@ export async function apiAdminRejectMember(
   const res = await authedFetch(`/api/admin/members/${id}/reject`, { method: "PATCH" });
   const json = (await res.json()) as { message?: string } | undefined;
   return ok({ message: json?.message ?? "Registration rejected and removed" });
+}
+
+// ─── Admin user management ────────────────────────────────────────────────────
+
+/** GET /api/admin/members/:id — full read-only snapshot (dashboard view, edit
+ *  prefill, suspension status, payment history). */
+export async function apiAdminGetMemberDetail(
+  id: string
+): Promise<ApiSuccess<AdminMemberDetail>> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl || !getAccessToken()) {
+    throw new ApiRequestError(0, "Requires the backend. Please sign in again.");
+  }
+  const res = await authedFetch(`/api/admin/members/${id}`);
+  const json = (await res.json()) as { member?: AdminMemberDetail } | undefined;
+  if (!json?.member) {
+    throw new ApiRequestError(0, "Unexpected server response. Please try again.");
+  }
+  return ok(json.member);
+}
+
+/** PATCH /api/members/:id — the existing admin edit path, reused here so the
+ *  user-management view edits through the same endpoint + validation as the
+ *  member's own profile form. */
+export async function apiAdminUpdateMemberDetails(
+  id: string,
+  payload: {
+    fullName?: string;
+    matricNumber?: string;
+    gender?: string;
+    phone?: string;
+    address?: string;
+    bio?: string;
+    profileImage?: string;
+  }
+): Promise<ApiSuccess<{ message: string }>> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl || !getAccessToken()) {
+    throw new ApiRequestError(0, "Requires the backend. Please sign in again.");
+  }
+  await authedFetch(`/api/members/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+  return ok({ message: "Details updated" });
+}
+
+/** PATCH /api/admin/members/:id/bio-data — edits another member's bio-data
+ *  record through the same validation as their own form (no second membership
+ *  number is ever issued on admin edits). */
+export async function apiAdminUpdateMemberBioData(
+  id: string,
+  payload: BioDataPayload
+): Promise<ApiSuccess<{ message: string }>> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl || !getAccessToken()) {
+    throw new ApiRequestError(0, "Requires the backend. Please sign in again.");
+  }
+  await authedFetch(`/api/admin/members/${id}/bio-data`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+  return ok({ message: "Bio data updated" });
+}
+
+/** PATCH /api/admin/members/:id/suspend — suspend (true) or unsuspend (false).
+ *  Suspending revokes every live refresh-token server-side, kicking all open
+ *  sessions immediately; login and per-request auth checks reject the account
+ *  with 403 "Account suspended" until it is unsuspended. */
+export async function apiAdminSetMemberSuspended(
+  id: string,
+  suspended: boolean
+): Promise<ApiSuccess<AdminMemberDetail>> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl || !getAccessToken()) {
+    throw new ApiRequestError(0, "Requires the backend. Please sign in again.");
+  }
+  const res = await authedFetch(`/api/admin/members/${id}/suspend`, {
+    method: "PATCH",
+    body: JSON.stringify({ suspended }),
+  });
+  const json = (await res.json()) as { member?: AdminMemberDetail } | undefined;
+  if (!json?.member) {
+    throw new ApiRequestError(0, "Unexpected server response. Please try again.");
+  }
+  return ok(json.member);
+}
+
+/** DELETE /api/admin/members/:id — super-admin only (the delete gate hard-fails
+ *  server-side for everyone else). Permanently removes the user + member and
+ *  everything that cascades. Never reversible. */
+export async function apiAdminDeleteMember(
+  id: string
+): Promise<ApiSuccess<{ message: string }>> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl || !getAccessToken()) {
+    throw new ApiRequestError(0, "Requires the backend. Please sign in again.");
+  }
+  const res = await authedFetch(`/api/admin/members/${id}`, { method: "DELETE" });
+  const json = (await res.json()) as { message?: string } | undefined;
+  return ok({ message: json?.message ?? "User permanently deleted" });
 }
 
 /** GET /api/admin/payments */
