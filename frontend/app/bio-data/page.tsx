@@ -144,7 +144,8 @@ export default function BioDataPage() {
   const canSubmit =
     bioForm.formState.isValid &&
     consentsTicketed &&
-    !submitting;
+    !submitting &&
+    !savedAt;
 
   // Initial load: prefer a server record, else a saved draft, else member data.
   useEffect(() => {
@@ -246,7 +247,7 @@ export default function BioDataPage() {
           </h1>
           <p className="text-[var(--text-muted)] text-sm mt-1">
             {savedAt
-              ? "Your record is on file — you can update it any time."
+              ? "Your Bio Data has been submitted and is on file."
               : "Complete your details once to update your membership record."}
           </p>
         </div>
@@ -493,7 +494,7 @@ export default function BioDataPage() {
               <FileCheck2 size={15} className="shrink-0 mt-0.5" />
               <span>
                 {savedAt
-                  ? "Your Bio Data is saved. Updating it writes a fresh, fully-validated record."
+                  ? "Your Bio Data has been submitted successfully and can no longer be edited."
                   : "Submit once all required fields are filled and both Section I boxes are ticked."}
               </span>
             </div>
@@ -509,8 +510,8 @@ export default function BioDataPage() {
                 disabled={!canSubmit}
                 className="min-w-[10rem]"
               >
-                {!submitting && <Save size={16} />}
-                {savedAt ? "Save Changes" : "Submit Bio Data"}
+                {!submitting && (savedAt ? <CheckCircle2 size={16} /> : <Save size={16} />)}
+                {savedAt ? "Submitted" : "Submit Bio Data"}
               </Button>
             </div>
           </Card>
