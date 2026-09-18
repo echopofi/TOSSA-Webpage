@@ -25,12 +25,12 @@ export default function Navbar({ variant = "public", userName }: NavbarProps) {
   const displayName = variant === "auth" ? authName || undefined : undefined;
 
   return (
-    <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-[var(--border-subtle)]">
+    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-[var(--border-subtle)] shadow-sm">
       <nav className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link
           href="/"
-          className="flex items-center gap-2 font-[family-name:var(--font-heading)] font-semibold text-[var(--text-heading)] text-lg"
+          className="flex items-center gap-2 font-[family-name:var(--font-heading)] font-bold text-[#0F0C1B] text-lg hover:opacity-90 transition-opacity"
         >
           <Image
             src="/assets/logo.jpeg"
@@ -43,7 +43,7 @@ export default function Navbar({ variant = "public", userName }: NavbarProps) {
         </Link>
 
         {/* Desktop links */}
-        <div className="hidden md:flex items-center gap-6 text-sm font-medium text-[var(--text-body)]">
+        <div className="hidden md:flex items-center gap-6 text-sm font-semibold text-[#1A1528]">
           <Link href="/sets" className="hover:text-[var(--primary)] transition-colors">
             Our Sets
           </Link>
@@ -55,7 +55,7 @@ export default function Navbar({ variant = "public", userName }: NavbarProps) {
           </Link>
           {variant === "public" ? (
             <>
-              <Link href="/register" className="btn-primary text-sm px-5 py-2">
+              <Link href="/register" className="btn-primary text-sm px-5 py-2 font-bold">
                 Join
               </Link>
             </>
@@ -64,7 +64,7 @@ export default function Navbar({ variant = "public", userName }: NavbarProps) {
               <Link href="/dashboard" className="hover:text-[var(--primary)] transition-colors">
                 Dashboard
               </Link>
-              <span className="text-[var(--text-muted)] border-l border-[var(--border-subtle)] pl-4">
+              <span className="text-[#372E4A] font-semibold border-l border-[var(--border-subtle)] pl-4">
                 {displayName}
               </span>
             </>
@@ -73,7 +73,7 @@ export default function Navbar({ variant = "public", userName }: NavbarProps) {
 
         {/* Mobile menu toggle */}
         <button
-          className="md:hidden p-2 rounded-lg hover:bg-[var(--primary-light)] text-[var(--text-heading)]"
+          className="md:hidden p-2 rounded-lg hover:bg-[var(--primary-light)] text-[#1A1528]"
           aria-label="Toggle menu"
           onClick={() => setOpen((v) => !v)}
         >
@@ -83,7 +83,7 @@ export default function Navbar({ variant = "public", userName }: NavbarProps) {
 
       {/* Mobile drawer */}
       {open && (
-        <div className="md:hidden bg-white border-t border-[var(--border-subtle)] px-4 py-4 flex flex-col gap-3 text-sm font-medium">
+        <div className="md:hidden bg-white border-t border-[var(--border-subtle)] px-4 py-4 flex flex-col gap-3 text-sm font-semibold text-[#1A1528]">
           <Link href="/sets" className="py-2 hover:text-[var(--primary)]" onClick={() => setOpen(false)}>
             Our Sets
           </Link>
@@ -98,7 +98,7 @@ export default function Navbar({ variant = "public", userName }: NavbarProps) {
               <Link
                 href="/register"
                 onClick={() => setOpen(false)}
-                className="btn-primary w-full justify-center py-2.5"
+                className="btn-primary w-full justify-center py-2.5 font-bold"
               >
                 Join
               </Link>
