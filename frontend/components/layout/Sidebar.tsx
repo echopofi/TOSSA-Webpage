@@ -17,6 +17,7 @@ import {
   ScrollText,
 } from "lucide-react";
 import clsx from "clsx";
+import AdminMemberSearch from "@/components/admin/AdminMemberSearch";
 
 const navItems = [
   { href: "/dashboard",    icon: LayoutDashboard, label: "Dashboard"   },
@@ -69,6 +70,11 @@ export default function Sidebar({ isAdmin }: SidebarProps) {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 flex flex-col gap-1">
+        {isAdminUser && (
+          <div className="mb-1 pb-3 border-b border-[var(--border-subtle)]">
+            <AdminMemberSearch variant="row" align="left" />
+          </div>
+        )}
         {navItems
           .filter(
             (item) =>

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useState, useSyncExternalStore } from "react";
 import { Menu, X } from "lucide-react";
 import { getCurrentUser } from "@/lib/session";
+import AdminMemberSearch from "@/components/admin/AdminMemberSearch";
 
 interface NavbarProps {
   variant?: "public" | "auth";
@@ -23,6 +24,8 @@ export default function Navbar({ variant = "public", userName }: NavbarProps) {
   );
 
   const displayName = variant === "auth" ? authName || undefined : undefined;
+
+  const isAdmin = variant === "auth" && getCurrentUser()?.role === "admin";
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-[var(--border-subtle)] shadow-sm">
@@ -71,14 +74,17 @@ export default function Navbar({ variant = "public", userName }: NavbarProps) {
           )}
         </div>
 
-        {/* Mobile menu toggle */}
-        <button
-          className="md:hidden p-2 rounded-lg hover:bg-[var(--primary-light)] text-[#1A1528]"
-          aria-label="Toggle menu"
-          onClick={() => setOpen((v) => !v)}
-        >
-          {open ? <X size={22} /> : <Menu size={22} />}
-        </button>
+        {/* Mobile menu toggle + admin search */}
+        <div className="flex items-center gap-1">
+          {isAdmin && <AdminMemberSearch variant="icon" align="right" />}
+          <button
+            className="md:hidden p-2 rounded-lg hover:bg-[var(--primary-light)] text-[#1A1528]"
+            aria-label="Toggle menu"
+            onClick={() => setOpen((v) => !v)}
+          >
+            {open ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
       </nav>
 
       {/* Mobile drawer */}
