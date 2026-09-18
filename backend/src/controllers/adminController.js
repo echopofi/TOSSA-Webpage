@@ -346,6 +346,211 @@ async function rejectMember(req, res) {
   }
 }
 
+// Shapes a single member record for the admin user-management view. It is the
+// payload behind GET /api/admin/members/:id and the snapshot shape used by the
+// suspend/unsuspend endpoints, so the frontend always renders fresh status.
+function serializeMemberDetail(member) {
+  return {
+    user: {
+      id: member.user.id,
+      fullName: member.user.fullName,
+      email: member.user.email,
+      role: member.user.role,
+      isVerified: member.user.isVerified,
+      createdAt: member.user.createdAt,
+    },
+    member: {
+      id: member.id,
+      membershipNumber: member.membershipNumber,
+      matricNumber: member.matricNumber,
+      gender: member.gender,
+      phone: member.phone,
+      address: member.address,
+      bio: member.bio,
+      profileImage: member.profileImage,
+      isActive: member.isActive,
+      joinedAt: member.joinedAt,
+    },
+    bioData: member.bioData
+      ? {
+          fullName: member.bioData.fullName,
+          formerNickname: member.bioData.formerNickname,
+          gender: member.bioData.gender,
+          setYear: member.bioData.setYear,
+          phone: member.bioData.phone,
+          email: member.bioData.email,
+          city: member.bioData.city,
+          state: member.bioData.state,
+          country: member.bioData.country,
+          bloodGroup: member.bioData.bloodGroup,
+          occupationCategory: member.bioData.occupationCategory,
+          specialization: member.bioData.specialization,
+          membershipDeclaration: member.bioData.membershipDeclaration,
+          dataPrivacyConsent: member.bioData.dataPrivacyConsent,
+          updatedAt: member.bioData.updatedAt,
+        }
+      : null,
+    sets: member.setMembers.map((sm) => ({
+      id: sm.set.id,
+      name: sm.set.setName,
+      active: sm.set.isActive,
+      joinedAt: sm.joinedAt,
+    })),
+    payments: member.payments.map((p) => ({
+      id: p.id,
+      amount: p.amount,
+      status: p.status,
+      reference: p.reference,
+      createdAt: p.createdAt,
+    })),
+    duesPayments: member.duesPayments.map((d) => ({
+      id: d.id,
+      cycle: d.cycle ? d.cycle.title : null,
+      amount: d.amountPaid,
+      status: d.status,
+      createdAt: d.createdAt,
+      paidAt: d.paidAt,
+    })),
+    activeSessions: member.user._count.refreshTokens,
+  };
+}
+
+async function loadMemberDetail(id) {
+  return prisma.member.findUnique({
+    where: { id },
+    include: {
+      user: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
+          isVerified: true,
+          createdAt: true,
+          _count: { select: { refreshTokens: { where: { revoked: false } } } },
+        },
+      },
+      bioData: true,
+      setMembers: { include: { set: true }, orderBy: { joinedAt: 'asc' } },
+      payments: { orderBy: { createdAt: 'desc' } },
+      duesPayments: { include: { cycle: true }, orderBy: { createdAt: 'desc' } },
+    },
+  });
+}
+
+// GET /api/admin/members/:id
+// Full read-only snapshot for the admin user-management view (dashboard view,
+// edit form prefill, suspension status, payment history).
+async function getMemberDetail(req, res) {
+  try {
+    const member = await loadMemberDetail(req.params.id);
+    if (!member) {
+      return res.status(404).json({ error: 'Member not found' });
+    }
+
+    res.json({ member: serializeMemberDetail(member) });
+  } catch (err) {
+    console.error('Get member detail error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// PATCH /api/admin/members/:id/suspend  body: { suspended: boolean }
+// Any admin can suspend/unsuspend. Suspending flips member.isActive to false —
+// which login, refresh-token renewal, and every per-request auth check now
+// reject — and immediately revokes every outstanding refresh token so the
+// member's live sessions are kicked server-side. Unsuspending flips it back;
+// the member signs in again with a fresh session.
+async function updateMemberSuspension(req, res) {
+  try {
+    const { suspended } = req.body || {};
+    if (typeof suspended !== 'boolean') {
+      return res.status(400).json({ error: 'suspended must be a boolean' });
+    }
+
+    const member = await loadMemberDetail(req.params.id);
+    if (!member) {
+      return res.status(404).json({ error: 'Member not found' });
+    }
+    if (member.user.role === 'admin') {
+      return res.status(400).json({ error: 'Admin accounts cannot be suspended' });
+    }
+
+    if (suspended) {
+      await prisma.$transaction([
+        prisma.member.update({ where: { id: member.id }, data: { isActive: false } }),
+        // Kill every live session: the member's stored refresh tokens are the
+        // only way an expired access token gets renewed, so revoking them makes
+        // the suspension hold even after the 5-minute access-token window.
+        prisma.refreshToken.updateMany({
+          where: { userId: member.user.id, revoked: false },
+          data: { revoked: true },
+        }),
+      ]);
+      console.log(
+        `[admin] ${req.user.email} suspended ${member.user.fullName} <${member.user.email}> (${member.user.id})`
+      );
+    } else {
+      await prisma.member.update({ where: { id: member.id }, data: { isActive: true } });
+      console.log(
+        `[admin] ${req.user.email} unsuspended ${member.user.fullName} <${member.user.email}> (${member.user.id})`
+      );
+    }
+
+    const updated = await loadMemberDetail(member.id);
+    res.json({ member: serializeMemberDetail(updated) });
+  } catch (err) {
+    console.error('Update member suspension error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// DELETE /api/admin/members/:id  (super admin only — route-gated)
+// Permanently removes the user and, via the verified cascades (75f23aa +
+// bio_data/refresh_tokens), every member-owned record: set_members, payments +
+// payment_transactions, dues_payments, milestones, election_applications,
+// exco_officers, bio_data, refresh_tokens. announcements.target_member_id is
+// SET NULL (never deleted); announcements created BY the user would violate the
+// created_by RESTRICT, so any such rows are re-authored to the deleting super
+// admin first (announcements are standing content, not member-owned data).
+async function deleteMemberAndUser(req, res) {
+  try {
+    const member = await loadMemberDetail(req.params.id);
+    if (!member) {
+      return res.status(404).json({ error: 'Member not found' });
+    }
+    if (member.user.role === 'admin') {
+      return res.status(400).json({ error: 'Admin accounts cannot be deleted' });
+    }
+    if (!member.user.isVerified) {
+      return res.status(400).json({ error: 'Unverified applicants should be rejected, not deleted' });
+    }
+
+    const announcementsAuthored = await prisma.announcement.count({
+      where: { createdBy: member.user.id },
+    });
+    if (announcementsAuthored > 0) {
+      await prisma.announcement.updateMany({
+        where: { createdBy: member.user.id },
+        data: { createdBy: req.user.id },
+      });
+      console.log(
+        `[admin] reassigned ${announcementsAuthored} announcement(s) authored by ${member.user.email} to ${req.user.email}`
+      );
+    }
+
+    await prisma.user.delete({ where: { id: member.user.id } });
+
+    console.log(
+      `[admin] ${req.user.email} permanently deleted ${member.user.fullName} <${member.user.email}> (user ${member.user.id}, member ${member.id})`
+    );
+    res.json({ message: 'User permanently deleted' });
+  } catch (err) {
+    console.error('Delete member error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
 module.exports = {
   getDashboard,
   allPayments,
@@ -355,4 +560,7 @@ module.exports = {
   pendingMembers,
   approveMember,
   rejectMember,
+  getMemberDetail,
+  updateMemberSuspension,
+  deleteMemberAndUser,
 };

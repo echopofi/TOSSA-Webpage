@@ -174,7 +174,7 @@ async function updateOwnPhoto(req, res) {
 // PATCH /api/members/:id — admin
 async function updateMember(req, res) {
   try {
-    const { matricNumber, gender, phone, address, bio, profileImage, isActive } = req.body;
+    const { matricNumber, gender, phone, address, bio, profileImage, isActive, fullName } = req.body;
 
     const data = {};
     if (matricNumber !== undefined) data.matricNumber = matricNumber;
@@ -192,6 +192,15 @@ async function updateMember(req, res) {
         user: { select: { id: true, email: true, fullName: true } },
       },
     });
+
+    if (fullName !== undefined) {
+      const trimmed = typeof fullName === 'string' ? fullName.trim() : fullName;
+      if (!trimmed || trimmed.length > 255) {
+        return res.status(400).json({ error: 'Full name cannot be empty or too long' });
+      }
+      await prisma.user.update({ where: { id: member.user.id }, data: { fullName: trimmed } });
+      member.user.fullName = trimmed;
+    }
 
     res.json({
       id: member.id,

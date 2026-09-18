@@ -8,6 +8,9 @@ const {
   pendingMembers,
   approveMember,
   rejectMember,
+  getMemberDetail,
+  updateMemberSuspension,
+  deleteMemberAndUser,
 } = require('../controllers/adminController');
 const {
   createPosition,
@@ -16,7 +19,8 @@ const {
 } = require('../controllers/electionController');
 const { assignOfficer, endOfficerTerm } = require('../controllers/excoController');
 const { updateSetCover, addSetImage, removeSetImage } = require('../controllers/memberController');
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { adminSaveBioData } = require('../controllers/bioDataController');
+const { authenticateToken, requireAdmin, requireSuperAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -30,6 +34,13 @@ router.put('/members/:id/role', updateMemberRole);
 router.get('/members/pending', pendingMembers);
 router.patch('/members/:id/approve', approveMember);
 router.patch('/members/:id/reject', rejectMember);
+
+// User-management: read-only snapshot, validated bio-data edit, suspend/unsuspend
+// (any admin), and permanent deletion (super admin only).
+router.get('/members/:id', getMemberDetail);
+router.patch('/members/:id/bio-data', adminSaveBioData);
+router.patch('/members/:id/suspend', updateMemberSuspension);
+router.delete('/members/:id', requireSuperAdmin, deleteMemberAndUser);
 
 // Set images — cover (single slot) + gallery (collection)
 router.put('/sets/:id/cover', updateSetCover);
