@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSyncExternalStore } from "react";
 import { subscribeAuth, getCurrentUserSnapshot } from "@/lib/session";
 import { apiMe } from "@/lib/api";
+import { GuardSkeleton } from "@/components/skeletons/PageSkeletons";
 
 /**
  * Route-level guard for /profile (and any biodata-gated page).
@@ -42,11 +43,7 @@ export default function BioDataGate({ children }: { children: React.ReactNode })
   }, [router]);
 
   if (submitted !== true) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <GuardSkeleton />;
   }
 
   return <>{children}</>;
