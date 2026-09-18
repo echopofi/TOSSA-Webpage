@@ -26,16 +26,16 @@ const socials = [
 
 export default function Footer() {
   return (
-    <footer className="bg-[var(--text-heading)] text-white mt-auto">
+    <footer className="bg-white border-t border-[var(--border-subtle)] text-[#1A1528] mt-auto">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 grid grid-cols-1 md:grid-cols-3 gap-8">
         <div>
-          <div className="flex items-center gap-2 font-[family-name:var(--font-heading)] font-bold text-white text-lg mb-3">
-            <span className="w-7 h-7 rounded-md bg-[var(--primary)] flex items-center justify-center text-white">
+          <div className="flex items-center gap-2 font-[family-name:var(--font-heading)] font-bold text-[#0F0C1B] text-lg mb-3">
+            <span className="w-7 h-7 rounded-md bg-[var(--primary)] text-white flex items-center justify-center">
               <GraduationCap size={16} />
             </span>
             TSSOSA
           </div>
-          <p className="text-sm text-[#F4F0FA] font-medium leading-relaxed">
+          <p className="text-sm text-[#6B637B] font-medium leading-relaxed">
             Keeping the alumni family connected, one set at a time.
           </p>
 
@@ -46,7 +46,7 @@ export default function Footer() {
                 key={label}
                 href={href}
                 aria-label={label}
-                className="w-9 h-9 rounded-full bg-white/20 text-white flex items-center justify-center transition-colors hover:bg-[var(--primary)] hover:text-white"
+                className="w-9 h-9 rounded-full bg-[var(--primary-light)] text-[var(--primary)] flex items-center justify-center transition-colors hover:bg-[var(--primary)] hover:text-white"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                   <path d={path} />
@@ -57,25 +57,25 @@ export default function Footer() {
         </div>
 
         <div>
-          <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-3">Navigate</h4>
-          <ul className="space-y-2.5 text-sm font-medium text-[#F4F0FA]">
-            <li><Link href="/" className="hover:text-white hover:underline transition-colors">Home</Link></li>
-            <li><Link href="/sets" className="hover:text-white hover:underline transition-colors">Our Sets</Link></li>
-            <li><Link href="/register" className="hover:text-white hover:underline transition-colors">Register</Link></li>
-            <li><Link href="/login" className="hover:text-white hover:underline transition-colors">Sign In</Link></li>
+          <h4 className="text-sm font-bold text-[#0F0C1B] uppercase tracking-wider mb-3">Navigate</h4>
+          <ul className="space-y-2.5 text-sm font-semibold text-[#1A1528]">
+            <li><Link href="/" className="hover:text-[var(--primary)] transition-colors">Home</Link></li>
+            <li><Link href="/sets" className="hover:text-[var(--primary)] transition-colors">Our Sets</Link></li>
+            <li><Link href="/register" className="hover:text-[var(--primary)] transition-colors">Register</Link></li>
+            <li><Link href="/login" className="hover:text-[var(--primary)] transition-colors">Sign In</Link></li>
           </ul>
         </div>
 
         <div>
-          <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-3">Members</h4>
-          <ul className="space-y-2.5 text-sm font-medium text-[#F4F0FA]">
-            <li><Link href="/dashboard" className="hover:text-white hover:underline transition-colors">Dashboard</Link></li>
-            <li><Link href="/payments" className="hover:text-white hover:underline transition-colors">Pay Dues</Link></li>
+          <h4 className="text-sm font-bold text-[#0F0C1B] uppercase tracking-wider mb-3">Members</h4>
+          <ul className="space-y-2.5 text-sm font-semibold text-[#1A1528]">
+            <li><Link href="/dashboard" className="hover:text-[var(--primary)] transition-colors">Dashboard</Link></li>
+            <li><Link href="/payments" className="hover:text-[var(--primary)] transition-colors">Pay Dues</Link></li>
           </ul>
         </div>
       </div>
 
-      <div className="border-t border-white/20 py-4 text-center text-xs font-medium text-[#EBE5F7]">
+      <div className="border-t border-[var(--border-subtle)] py-4 text-center text-xs font-medium text-[#6B637B]">
         © {new Date().getFullYear()} TSSOSA. All rights reserved.
       </div>
     </footer>
