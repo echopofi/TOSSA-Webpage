@@ -11,7 +11,6 @@ import {
   SkButton,
   SkPill,
   SkCircle,
-  SkImage,
 } from "@/components/ui/Skeleton";
 
 /**
@@ -831,43 +830,37 @@ export function ExcoAssignSkeleton() {
   );
 }
 
-/** Set management panel body placeholder. */
+/** Set management panel body placeholder (panel supplies Card + header). */
 export function SetManageSkeleton() {
   return (
-    <Card padding="none">
-      <div className="px-5 py-4 border-b border-[var(--border-subtle)]">
-        <SkTitle className="w-52" />
-        <SkText className="w-64 mt-1.5" />
-      </div>
-      <div className="p-5 flex flex-col gap-6">
-        <SkInput />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="flex flex-col gap-3">
-            <Skeleton className="aspect-[4/3] w-full rounded-xl" />
-            <SkButton className="w-40" />
-          </div>
-          <div className="flex flex-col gap-3">
-            <SkTitle className="w-32" />
-            <SkText className="w-full" />
-            <SkText className="w-4/5" />
-            <Skeleton className="h-20 w-full rounded-lg" />
-            <SkButton className="w-32" />
-          </div>
+    <div className="px-5 py-5 flex flex-col gap-6" aria-hidden="true">
+      <SkInput />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="flex flex-col gap-3">
+          <Skeleton className="aspect-[4/3] w-full rounded-xl" />
+          <SkButton className="w-40" />
         </div>
         <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <SkText className="w-24" />
-            <SkButton className="w-28 h-9" />
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Skeleton className="aspect-[3/4] rounded-lg" />
-            <Skeleton className="aspect-[3/4] rounded-lg" />
-            <Skeleton className="aspect-[3/4] rounded-lg hidden sm:block" />
-            <Skeleton className="aspect-[3/4] rounded-lg hidden sm:block" />
-          </div>
+          <SkTitle className="w-32" />
+          <SkText className="w-full" />
+          <SkText className="w-4/5" />
+          <Skeleton className="h-20 w-full rounded-lg" />
+          <SkButton className="w-32" />
         </div>
       </div>
-    </Card>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <SkText className="w-24" />
+          <SkButton className="w-28 h-9" />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Skeleton className="aspect-[3/4] rounded-lg" />
+          <Skeleton className="aspect-[3/4] rounded-lg" />
+          <Skeleton className="aspect-[3/4] rounded-lg hidden sm:block" />
+          <Skeleton className="aspect-[3/4] rounded-lg hidden sm:block" />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -914,6 +907,3 @@ export function SetStripSkeleton() {
     </div>
   );
 }
-
-// Keep the imports used so lint doesn't flag them in shorter consumers.
-export { Skeleton as _Skeleton };

@@ -24,6 +24,7 @@ import {
 } from "@/lib/api";
 import { uploadSetImage } from "@/lib/upload";
 import type { GraduationSet } from "@/lib/types";
+import { SetManageSkeleton } from "@/components/skeletons/PageSkeletons";
 
 interface DescriptionForm {
   description: string;
@@ -198,7 +199,7 @@ export default function SetManagePanel() {
         )}
 
         {loading ? (
-          <div className="py-10 text-center text-sm text-[var(--text-muted)]">Loading sets…</div>
+          <SetManageSkeleton />
         ) : sets.length === 0 ? (
           <div className="py-10 text-center text-sm text-[var(--text-muted)]">
             No graduation sets exist yet.

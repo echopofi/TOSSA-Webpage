@@ -14,6 +14,7 @@ import {
   apiAdminEndOfficerTerm,
 } from "@/lib/api";
 import type { ElectionPosition, ExcoOfficer, Member } from "@/lib/types";
+import { ExcoAssignSkeleton } from "@/components/skeletons/PageSkeletons";
 
 export default function ExcoAssignmentPanel() {
   const [positions, setPositions]     = useState<ElectionPosition[]>([]);
@@ -123,7 +124,7 @@ export default function ExcoAssignmentPanel() {
   }));
 
   if (loading) {
-    return <div className="text-sm text-[var(--text-muted)] py-8 text-center">Loading…</div>;
+    return <ExcoAssignSkeleton />;
   }
 
   return (

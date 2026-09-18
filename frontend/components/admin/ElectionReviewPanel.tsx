@@ -14,6 +14,7 @@ import {
 } from "@/lib/api";
 import type { ElectionApplication } from "@/lib/types";
 import { formatNaira, formatDate } from "@/lib/utils";
+import { PanelRowsSkeleton } from "@/components/skeletons/PageSkeletons";
 
 function appStatusToPill(status: ElectionApplication["status"]): "paid" | "pending" | "overdue" {
   if (status === "approved" || status === "submitted") return "paid";
@@ -136,7 +137,7 @@ export default function ElectionReviewPanel() {
         </div>
 
         {loading ? (
-          <div className="px-5 py-10 text-center text-sm text-[var(--text-muted)]">Loading…</div>
+          <PanelRowsSkeleton rows={3} />
         ) : applications.length === 0 ? (
           <div className="px-5 py-10 text-center text-sm text-[var(--text-muted)]">
             No election applications yet. Applications appear here once members pay the contest fee.

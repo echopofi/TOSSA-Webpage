@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import type { PendingMember } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+import { PanelRowsSkeleton } from "@/components/skeletons/PageSkeletons";
 
 export default function PendingMembersPanel() {
   const [pending, setPending]       = useState<PendingMember[]>([]);
@@ -90,7 +91,7 @@ export default function PendingMembersPanel() {
         )}
 
         {loading ? (
-          <div className="px-5 py-10 text-center text-sm text-[var(--text-muted)]">Loading…</div>
+          <PanelRowsSkeleton rows={3} />
         ) : pending.length === 0 ? (
           <div className="px-5 py-10 text-center text-sm text-[var(--text-muted)]">
             No registrations awaiting approval. New sign-ups appear here for you to review.
